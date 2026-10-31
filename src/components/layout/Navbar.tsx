@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -20,6 +20,8 @@ import {
   Home,
   Shield,
   Tractor,
+  Sun,
+  Moon,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -27,6 +29,17 @@ export default function Navbar() {
   const router = useRouter();
   const { userProfile, setUserProfile } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [isDark, setIsDark] = useState(false);
+
+  useEffect(() => {
+    setIsDark(document.documentElement.classList.contains("dark"));
+  }, []);
+
+  const toggleTheme = () => {
+    const dark = document.documentElement.classList.toggle("dark");
+    setIsDark(dark);
+    localStorage.setItem("agricare_theme", dark ? "dark" : "light");
+  };
 
   const role = userProfile?.role || "farmer";
 
@@ -123,6 +136,16 @@ export default function Navbar() {
 
           {/* Right Header items */}
           <div className="flex items-center gap-3">
+            {/* Dark Mode Toggle */}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+              title="Toggle dark mode"
+            >
+              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+            </button>
+
             {/* Notification Bell */}
             <NotificationBell />
 

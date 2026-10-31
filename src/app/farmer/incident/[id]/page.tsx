@@ -3,7 +3,7 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import { Incident, Recommendation } from "@/lib/types";
@@ -43,64 +43,98 @@ function IncidentDetailContent() {
   const id = params?.id as string;
   const { userProfile, firebaseUser } = useAuth();
 
-  const [incident, setIncident] = useState<Incident | null>(null);
-  const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+  // Seed from localStorage in the initializers so demo data paints instantly
+  // without a synchronous setState inside the effect.
+  const [incident, setIncident] = useState<Incident | null>(() => {
+    if (typeof window === "undefined") return null;
+    const allIncidents: Incident[] = JSON.parse(
+      localStorage.getItem("agricare_incidents") || "[]"
+    );
+    return allIncidents.find((i) => i.id === id) || null;
+  });
+  const [recommendation, setRecommendation] = useState<Recommendation | null>(() => {
+    if (typeof window === "undefined") return null;
+    const allRecs: Recommendation[] = JSON.parse(
+      localStorage.getItem("agricare_recommendations") || "[]"
+    );
+    return allRecs.find((r) => r.incidentId === id) || null;
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!id) return;
 
-    const fetchDetails = async () => {
-      setLoading(true);
-
-      // Check local storage first
+    const readLocal = () => {
       const allIncidents: Incident[] = JSON.parse(
         localStorage.getItem("agricare_incidents") || "[]"
       );
       const foundLocal = allIncidents.find((i) => i.id === id);
-
       const allRecs: Recommendation[] = JSON.parse(
         localStorage.getItem("agricare_recommendations") || "[]"
       );
       const recLocal = allRecs.find((r) => r.incidentId === id);
-
-      try {
-        const snap = await getDoc(doc(db, "incidents", id));
-        if (snap.exists()) {
-          setIncident({ id: snap.id, ...snap.data() } as Incident);
-
-          // Fetch recommendation
-          const recQuery = query(
-            collection(db, "recommendations"),
-            where("incidentId", "==", id)
-          );
-          const recSnap = await getDocs(recQuery);
-          if (!recSnap.empty) {
-            setRecommendation({
-              id: recSnap.docs[0].id,
-              ...recSnap.docs[0].data(),
-            } as Recommendation);
-          } else if (recLocal) {
-            setRecommendation(recLocal);
-          }
-
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.warn("Firestore fetch error, fallback to local:", err);
-      }
-
-      if (foundLocal) {
-        setIncident(foundLocal);
-      }
-      if (recLocal) {
-        setRecommendation(recLocal);
-      }
-      setLoading(false);
+      return { foundLocal, recLocal };
     };
 
-    fetchDetails();
+    // Subscribe to Firestore for realtime updates (agriculturist resolving
+    // the case will stream straight to the farmer without a reload).
+    const unsubs: (() => void)[] = [];
+    try {
+      unsubs.push(
+        onSnapshot(
+          doc(db, "incidents", id),
+          (snap) => {
+            if (snap.exists()) {
+              setIncident({ id: snap.id, ...snap.data() } as Incident);
+            }
+            setLoading(false);
+          },
+          () => {
+            // Firestore unavailable — keep whatever localStorage has.
+            setLoading(false);
+          }
+        )
+      );
+
+      const recQuery = query(
+        collection(db, "recommendations"),
+        where("incidentId", "==", id)
+      );
+      unsubs.push(
+        onSnapshot(
+          recQuery,
+          (snap) => {
+            if (!snap.empty) {
+              setRecommendation({
+                id: snap.docs[0].id,
+                ...snap.docs[0].data(),
+              } as Recommendation);
+            }
+          },
+          () => {
+            /* ignore — recommendation falls back to localStorage */
+          }
+        )
+      );
+    } catch (err) {
+      console.warn("Firestore realtime init failed, using local data:", err);
+      queueMicrotask(() => setLoading(false));
+    }
+
+    // Listen for cross-tab demo updates (same browser, another tab resolves).
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "agricare_incidents" || e.key === "agricare_recommendations") {
+        const { foundLocal: f, recLocal: r } = readLocal();
+        if (f && f.id === id) setIncident(f);
+        if (r && r.incidentId === id) setRecommendation(r);
+      }
+    };
+    window.addEventListener("storage", handleStorage);
+
+    return () => {
+      unsubs.forEach((u) => u());
+      window.removeEventListener("storage", handleStorage);
+    };
   }, [id]);
 
   if (loading) {

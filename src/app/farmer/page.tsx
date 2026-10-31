@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { collection, query, where, getDocs, orderBy } from "firebase/firestore";
+import { collection, query, where, onSnapshot } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import { Incident } from "@/lib/types";
@@ -23,45 +23,77 @@ import {
 
 export default function FarmerDashboard() {
   const { userProfile, firebaseUser } = useAuth();
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const activeUserId = firebaseUser?.uid || userProfile?.id;
+
+  const [incidents, setIncidents] = useState<Incident[]>(() => {
+    if (typeof window === "undefined") return [];
+    const localIncidents: Incident[] = JSON.parse(
+      localStorage.getItem("agricare_incidents") || "[]"
+    );
+    return localIncidents
+      .filter((inc) => inc.farmerId === activeUserId)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  });
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!activeUserId) return;
 
-    const fetchIncidents = async () => {
-      setLoading(true);
+    const sortDesc = (list: Incident[]) =>
+      [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
-      // Load from local storage
-      const localIncidents: Incident[] = JSON.parse(
-        localStorage.getItem("agricare_incidents") || "[]"
+    const unsubs: (() => void)[] = [];
+    try {
+      // Single-field equality query keeps this index-free and realtime.
+      unsubs.push(
+        onSnapshot(
+          query(
+            collection(db, "incidents"),
+            where("farmerId", "==", activeUserId)
+          ),
+          (snap) => {
+            if (!snap.empty) {
+              const list = snap.docs.map(
+                (d) => ({ id: d.id, ...d.data() } as Incident)
+              );
+              setIncidents(sortDesc(list));
+            }
+            setLoading(false);
+          },
+          () => {
+            // Firestore unavailable — fall back to localStorage.
+            const localIncidents: Incident[] = JSON.parse(
+              localStorage.getItem("agricare_incidents") || "[]"
+            );
+            setIncidents(
+              sortDesc(localIncidents.filter((inc) => inc.farmerId === activeUserId))
+            );
+            setLoading(false);
+          }
+        )
       );
-      const userLocal = localIncidents.filter((inc) => inc.farmerId === activeUserId);
+    } catch (err) {
+      console.warn("Firestore query error, using local data fallback:", err);
+      queueMicrotask(() => setLoading(false));
+    }
 
-      try {
-        const q = query(
-          collection(db, "incidents"),
-          where("farmerId", "==", activeUserId),
-          orderBy("createdAt", "desc")
+    // Cross-tab demo updates.
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === "agricare_incidents") {
+        const localIncidents: Incident[] = JSON.parse(
+          localStorage.getItem("agricare_incidents") || "[]"
         );
-        const snap = await getDocs(q);
-        if (!snap.empty) {
-          const list = snap.docs.map((d) => ({ id: d.id, ...d.data() } as Incident));
-          setIncidents(list);
-          setLoading(false);
-          return;
-        }
-      } catch (err) {
-        console.warn("Firestore query error, using local data fallback:", err);
+        setIncidents(
+          sortDesc(localIncidents.filter((inc) => inc.farmerId === activeUserId))
+        );
       }
-
-      setIncidents(userLocal.sort((a, b) => b.createdAt.localeCompare(a.createdAt)));
-      setLoading(false);
     };
+    window.addEventListener("storage", handleStorage);
 
-    fetchIncidents();
+    return () => {
+      unsubs.forEach((u) => u());
+      window.removeEventListener("storage", handleStorage);
+    };
   }, [activeUserId]);
 
   const totalCount = incidents.length;

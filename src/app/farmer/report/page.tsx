@@ -141,7 +141,7 @@ export default function ReportIncidentPage() {
         try {
           const url = await uploadImageToSupabase(
             supabaseBucket,
-            `incidents/${incidentId}/img_${i}.jpg`,
+            `${incidentId}/img_${i}.jpg`,
             images[i]
           );
           downloadUrls.push(url);

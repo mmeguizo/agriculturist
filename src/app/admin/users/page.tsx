@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   Tractor,
   Loader2,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -36,6 +38,7 @@ export default function AdminUsersPage() {
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
 
   const [form, setForm] = useState({
     fullName: "",
@@ -204,7 +207,7 @@ export default function AdminUsersPage() {
 
         {/* Add User Form */}
         {showForm && (
-          <form onSubmit={handleAddUser} className="card border-2 border-purple-100 space-y-4">
+          <form onSubmit={handleAddUser} autoComplete="off" className="card border-2 border-purple-100 space-y-4">
             <h3 className="font-bold text-gray-900">Add New Account</h3>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
@@ -214,6 +217,7 @@ export default function AdminUsersPage() {
                 <input
                   type="text"
                   required
+                  autoComplete="off"
                   value={form.fullName}
                   onChange={(e) => setForm({ ...form, fullName: e.target.value })}
                   className="input-field text-sm"
@@ -227,6 +231,7 @@ export default function AdminUsersPage() {
                 <input
                   type="email"
                   required
+                  autoComplete="off"
                   value={form.email}
                   onChange={(e) => setForm({ ...form, email: e.target.value })}
                   className="input-field text-sm"
@@ -237,15 +242,26 @@ export default function AdminUsersPage() {
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   Temporary Password
                 </label>
-                <input
-                  type="password"
-                  required
-                  minLength={6}
-                  value={form.password}
-                  onChange={(e) => setForm({ ...form, password: e.target.value })}
-                  className="input-field text-sm"
-                  placeholder="At least 6 characters"
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    required
+                    minLength={6}
+                    autoComplete="new-password"
+                    value={form.password}
+                    onChange={(e) => setForm({ ...form, password: e.target.value })}
+                    className="input-field text-sm pr-10"
+                    placeholder="At least 6 characters"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    title={showPassword ? "Hide password" : "Show password"}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
               </div>
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
@@ -267,6 +283,7 @@ export default function AdminUsersPage() {
                 </label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={form.contactNumber}
                   onChange={(e) => setForm({ ...form, contactNumber: e.target.value })}
                   className="input-field text-sm"
@@ -279,6 +296,7 @@ export default function AdminUsersPage() {
                 </label>
                 <input
                   type="text"
+                  autoComplete="off"
                   value={form.farmLocation}
                   onChange={(e) => setForm({ ...form, farmLocation: e.target.value })}
                   className="input-field text-sm"
