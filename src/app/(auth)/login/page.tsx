@@ -52,7 +52,7 @@ export default function LoginPage() {
       try {
         const userCred = await signInWithEmailAndPassword(auth, email, password);
         uid = userCred.user.uid;
-      } catch (authErr: any) {
+      } catch (authErr: unknown) {
         // If demo credentials or Firebase config not yet loaded, look up demo users
         const demoUsers: UserProfile[] = JSON.parse(
           localStorage.getItem("agricare_all_users") || "[]"
@@ -86,8 +86,32 @@ export default function LoginPage() {
         throw authErr;
       }
 
-      // 2. Fetch User Profile from Firestore
-      const docSnap = await getDoc(doc(db, "users", uid));
+      // 2. Fetch User Profile from Firestore (with a timeout so the button never hangs forever)
+      let docSnap;
+      try {
+        const profileTimeout = new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  "Firestore request timed out. Make sure Cloud Firestore is created in your Firebase console."
+                )
+              ),
+            10000
+          )
+        );
+        docSnap = await Promise.race([
+          getDoc(doc(db, "users", uid)),
+          profileTimeout,
+        ]);
+      } catch (firestoreErr) {
+        console.error("Firestore profile fetch failed:", firestoreErr);
+        toast.error(
+          "Could not load your profile. Make sure Cloud Firestore is created in your Firebase console."
+        );
+        return;
+      }
+
       if (!docSnap.exists()) {
         toast.error("User profile not found. Please contact support.");
         return;
@@ -97,9 +121,13 @@ export default function LoginPage() {
       setUserProfile(profile);
       localStorage.setItem("agricare_demo_user", JSON.stringify(profile));
       routeByRoleAndStatus(profile);
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error("Login error:", error);
-      toast.error(error.message || "Failed to sign in. Please verify your credentials.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to sign in. Please verify your credentials."
+      );
     } finally {
       setLoading(false);
     }
