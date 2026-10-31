@@ -31,6 +31,22 @@ import {
 import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
 
+/**
+ * Strip the generic "await verified recommendation from extension officer"
+ * phrasing from AI treatment drafts. On the agriculturist side this text is
+ * redundant because the agriculturist is the one providing the recommendation.
+ */
+function cleanAiTreatment(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(
+      /\s*and\s+await\s+verified\s+recommendation\s+from\s+extension\s+officer\.?/gi,
+      ""
+    )
+    .trim()
+    .replace(/\.+\s*$/, "");
+}
+
 export default function AgriculturistCaseReviewPage() {
   return (
     <Suspense
@@ -104,7 +120,7 @@ function CaseReviewContent() {
       const ai = loadedIncident?.aiAnalysis;
       if (ai) {
         setDiagnosis(ai.diseaseName || "");
-        setTreatmentPlan(ai.recommendedTreatment || "");
+        setTreatmentPlan(cleanAiTreatment(ai.recommendedTreatment || ""));
         setPreventiveAdvice(ai.preventiveMeasures || "");
       }
 
@@ -132,6 +148,7 @@ function CaseReviewContent() {
         treatmentPlan: treatmentPlan.trim(),
         preventiveAdvice: preventiveAdvice.trim(),
         basedOnAI,
+        confidence: incident.aiAnalysis?.confidence || "",
         createdAt: new Date().toISOString(),
       };
 
@@ -302,6 +319,21 @@ function CaseReviewContent() {
         ) : (
           <form onSubmit={handleSubmit} className="card border-2 border-blue-100 space-y-4">
             <h2 className="font-bold text-gray-900">Submit Official Recommendation</h2>
+
+            {incident.aiAnalysis && (
+              <div>
+                <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                  AI Confidence Level
+                </label>
+                <input
+                  type="text"
+                  value={incident.aiAnalysis.confidence || "Not available"}
+                  readOnly
+                  aria-label="AI confidence level"
+                  className="input-field text-sm bg-gray-50 text-gray-600"
+                />
+              </div>
+            )}
 
             <div>
               <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">

@@ -66,6 +66,8 @@ export interface Recommendation {
   preventiveAdvice: string;
   // Whether the agriculturist used the AI draft as base
   basedOnAI: boolean;
+  // AI confidence level captured when the recommendation was created
+  confidence?: string;
   createdAt: string;
 }
 
