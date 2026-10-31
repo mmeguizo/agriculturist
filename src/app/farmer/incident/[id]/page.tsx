@@ -1,0 +1,301 @@
+"use client";
+
+import { Suspense, useEffect, useState } from "react";
+import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { doc, getDoc, collection, query, where, getDocs } from "firebase/firestore";
+import { db } from "@/lib/firebase";
+import { useAuth } from "@/lib/auth-context";
+import { Incident, Recommendation } from "@/lib/types";
+import DashboardLayout from "@/components/layout/DashboardLayout";
+import { IncidentStatusBadge } from "@/components/ui/StatusBadge";
+import ImageGallery from "@/components/ui/ImageGallery";
+import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import {
+  ArrowLeft,
+  Calendar,
+  MapPin,
+  Sparkles,
+  ShieldCheck,
+  CheckCircle2,
+  Clock,
+  AlertTriangle,
+  FileCheck2,
+} from "lucide-react";
+
+export default function FarmerIncidentDetailPage() {
+  return (
+    <Suspense
+      fallback={
+        <div className="min-h-screen flex items-center justify-center">
+          <LoadingSpinner size="lg" label="Loading incident..." />
+        </div>
+      }
+    >
+      <IncidentDetailContent />
+    </Suspense>
+  );
+}
+
+function IncidentDetailContent() {
+  const params = useParams();
+  const router = useRouter();
+  const id = params?.id as string;
+  const { userProfile, firebaseUser } = useAuth();
+
+  const [incident, setIncident] = useState<Incident | null>(null);
+  const [recommendation, setRecommendation] = useState<Recommendation | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const fetchDetails = async () => {
+      setLoading(true);
+
+      // Check local storage first
+      const allIncidents: Incident[] = JSON.parse(
+        localStorage.getItem("agricare_incidents") || "[]"
+      );
+      const foundLocal = allIncidents.find((i) => i.id === id);
+
+      const allRecs: Recommendation[] = JSON.parse(
+        localStorage.getItem("agricare_recommendations") || "[]"
+      );
+      const recLocal = allRecs.find((r) => r.incidentId === id);
+
+      try {
+        const snap = await getDoc(doc(db, "incidents", id));
+        if (snap.exists()) {
+          setIncident({ id: snap.id, ...snap.data() } as Incident);
+
+          // Fetch recommendation
+          const recQuery = query(
+            collection(db, "recommendations"),
+            where("incidentId", "==", id)
+          );
+          const recSnap = await getDocs(recQuery);
+          if (!recSnap.empty) {
+            setRecommendation({
+              id: recSnap.docs[0].id,
+              ...recSnap.docs[0].data(),
+            } as Recommendation);
+          } else if (recLocal) {
+            setRecommendation(recLocal);
+          }
+
+          setLoading(false);
+          return;
+        }
+      } catch (err) {
+        console.warn("Firestore fetch error, fallback to local:", err);
+      }
+
+      if (foundLocal) {
+        setIncident(foundLocal);
+      }
+      if (recLocal) {
+        setRecommendation(recLocal);
+      }
+      setLoading(false);
+    };
+
+    fetchDetails();
+  }, [id]);
+
+  if (loading) {
+    return (
+      <DashboardLayout allowedRoles={["farmer"]}>
+        <LoadingSpinner size="lg" label="Loading incident details..." />
+      </DashboardLayout>
+    );
+  }
+
+  if (!incident) {
+    return (
+      <DashboardLayout allowedRoles={["farmer"]}>
+        <div className="card text-center py-12">
+          <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto mb-3" />
+          <h2 className="text-xl font-bold text-gray-900">Incident Not Found</h2>
+          <p className="text-sm text-gray-500 mt-1">This report may have been removed or does not exist.</p>
+          <Link href="/farmer" className="btn-primary mt-4 inline-flex text-sm">
+            Return to Dashboard
+          </Link>
+        </div>
+      </DashboardLayout>
+    );
+  }
+
+  return (
+    <DashboardLayout allowedRoles={["farmer"]}>
+      <div className="max-w-4xl mx-auto space-y-6">
+        {/* Back Link & Header */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <Link
+            href="/farmer"
+            className="inline-flex items-center gap-1.5 text-xs font-bold text-gray-600 hover:text-green-700 transition-colors"
+          >
+            <ArrowLeft className="w-4 h-4" /> Back to My Reports
+          </Link>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500">Case Status:</span>
+            <IncidentStatusBadge status={incident.status} />
+          </div>
+        </div>
+
+        {/* Top Summary Card */}
+        <div className="card space-y-4 shadow-sm border-l-4 border-l-green-600">
+          <div className="flex flex-wrap items-center justify-between gap-2 border-b border-gray-100 pb-3">
+            <div>
+              <span className="text-xs font-bold uppercase tracking-wider text-green-700 bg-green-50 px-2.5 py-1 rounded">
+                Crop: {incident.cropType}
+              </span>
+              <h1 className="text-xl sm:text-2xl font-bold text-gray-900 mt-2">
+                Incident #{incident.id.slice(0, 8)}
+              </h1>
+            </div>
+            <div className="flex items-center gap-4 text-xs text-gray-500">
+              <span className="flex items-center gap-1">
+                <Calendar className="w-4 h-4 text-gray-400" />
+                {new Date(incident.createdAt).toLocaleDateString([], {
+                  year: "numeric",
+                  month: "long",
+                  day: "numeric",
+                })}
+              </span>
+              {incident.location && (
+                <span className="flex items-center gap-1">
+                  <MapPin className="w-4 h-4 text-gray-400" />
+                  {incident.location}
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div>
+            <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500 mb-1">
+              Farmer Description & Symptoms
+            </h3>
+            <p className="text-sm text-gray-800 leading-relaxed bg-gray-50 p-3.5 rounded-lg border border-gray-100">
+              {incident.description}
+            </p>
+          </div>
+
+          {/* Uploaded Evidence Photos (Min 4 Photos) */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
+                Uploaded Evidence Photos ({incident.imageUrls?.length || 0} Photos)
+              </h3>
+              <span className="text-[11px] text-gray-400">Click any photo to zoom</span>
+            </div>
+            <ImageGallery images={incident.imageUrls} alt={`${incident.cropType} photo`} />
+          </div>
+        </div>
+
+        {/* OFFICIAL AGRICULTURIST RECOMMENDATION (If Resolved) */}
+        {recommendation ? (
+          <div className="card bg-emerald-50/70 border-2 border-emerald-500/50 shadow-md space-y-4">
+            <div className="flex items-center justify-between border-b border-emerald-200 pb-3">
+              <div className="flex items-center gap-2 text-emerald-900">
+                <div className="p-2 bg-emerald-600 text-white rounded-lg">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold">Verified Extension Advisory & Prescription</h2>
+                  <p className="text-xs text-emerald-700">
+                    Prepared by: <strong>{recommendation.agriculturistName}</strong> •{" "}
+                    {new Date(recommendation.createdAt).toLocaleDateString()}
+                  </p>
+                </div>
+              </div>
+              <span className="bg-emerald-600 text-white text-xs font-bold px-3 py-1 rounded-full shadow-sm">
+                Official Recommendation
+              </span>
+            </div>
+
+            <div className="space-y-3 text-sm text-gray-800">
+              <div className="bg-white p-3.5 rounded-lg border border-emerald-200 shadow-xs">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block mb-1">
+                  Official Diagnosis
+                </span>
+                <p className="font-semibold text-gray-900 text-base">
+                  {recommendation.diagnosis}
+                </p>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-lg border border-emerald-200 shadow-xs">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block mb-1">
+                  Treatment & Control Plan
+                </span>
+                <p className="whitespace-pre-line text-gray-800 leading-relaxed">
+                  {recommendation.treatmentPlan}
+                </p>
+              </div>
+
+              <div className="bg-white p-3.5 rounded-lg border border-emerald-200 shadow-xs">
+                <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block mb-1">
+                  Preventive Guidelines
+                </span>
+                <p className="whitespace-pre-line text-gray-800 leading-relaxed">
+                  {recommendation.preventiveAdvice}
+                </p>
+              </div>
+            </div>
+          </div>
+        ) : (
+          <div className="card bg-amber-50/70 border border-amber-200 p-5 flex items-start gap-3">
+            <Clock className="w-5 h-5 text-amber-600 shrink-0 mt-0.5" />
+            <div>
+              <h3 className="text-sm font-bold text-amber-900">Awaiting Agriculturist Review</h3>
+              <p className="text-xs text-amber-800 mt-1 leading-relaxed">
+                Your incident report has been queued for our local municipal agriculturist. You will receive an in-app notification with the verified prescription and dosage once the inspection is completed.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* AI PRELIMINARY SCAN (Visible for quick reference) */}
+        {incident.aiAnalysis && (
+          <div className="card bg-blue-50/60 border border-blue-200 space-y-3">
+            <div className="flex items-center justify-between border-b border-blue-200 pb-2.5">
+              <div className="flex items-center gap-2 text-blue-900">
+                <Sparkles className="w-5 h-5 text-blue-600" />
+                <h3 className="font-bold text-sm">Automated Gemini Plant Vision Scan</h3>
+              </div>
+              <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                Confidence: {incident.aiAnalysis.confidence}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-800">
+              <div>
+                <span className="font-bold text-blue-900 block mb-0.5">Identified Problem:</span>
+                <span className="font-semibold text-sm text-gray-900">{incident.aiAnalysis.diseaseName}</span>
+              </div>
+              <div>
+                <span className="font-bold text-blue-900 block mb-0.5">Estimated Severity:</span>
+                <span className="font-bold text-amber-700">{incident.aiAnalysis.severity}</span>
+              </div>
+            </div>
+
+            <div className="text-xs text-gray-700 space-y-2 pt-1 border-t border-blue-100">
+              <div>
+                <span className="font-bold text-blue-900">Symptom Assessment:</span>
+                <p className="mt-0.5 text-gray-600">{incident.aiAnalysis.description}</p>
+              </div>
+              <div>
+                <span className="font-bold text-blue-900">Suggested Action Draft:</span>
+                <p className="mt-0.5 text-gray-600 whitespace-pre-line">{incident.aiAnalysis.recommendedTreatment}</p>
+              </div>
+            </div>
+
+            <p className="text-[10px] text-blue-700/80 italic pt-1">
+              * Note: The AI analysis serves as a preliminary triage indicator to aid the extension officer in formulating your final treatment plan.
+            </p>
+          </div>
+        )}
+      </div>
+    </DashboardLayout>
+  );
+}

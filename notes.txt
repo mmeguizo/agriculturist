@@ -1,0 +1,15 @@
+ai detect problem of the plants give recomendations
+picture plants like there is a disease or  discoloar ai will provide recomendations 
+identity the problem of the plants, the ai will not identify the plants just only the disease 
+the farmer will provide picture
+important features,  will recommend only the ai
+
+the agriculturis will see the picture and the agriculturist will recommend
+the system  or ai will recommend the agriculturist will approve it
+
+cases or incident ticket from farmers that ai can see
+
+basic login username and password only admin will provide the username and password
+or better create an account but admin will approve it
+
+submit / identity / report / recommend
