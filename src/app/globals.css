@@ -123,6 +123,21 @@ body {
   color-scheme: dark;
 }
 
+/* Theme toggle icons: both render in the DOM so server/client HTML match;
+   CSS shows the correct icon based on the .dark class on <html>. */
+.theme-icon-sun {
+  display: none;
+}
+.dark .theme-icon-sun {
+  display: inline;
+}
+.theme-icon-moon {
+  display: inline;
+}
+.dark .theme-icon-moon {
+  display: none;
+}
+
 .dark body {
   background-color: #0f172a;
   color: #e5e7eb;

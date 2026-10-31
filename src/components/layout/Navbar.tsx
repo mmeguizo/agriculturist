@@ -29,15 +29,9 @@ export default function Navbar() {
   const router = useRouter();
   const { userProfile, setUserProfile } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState<boolean>(() =>
-    typeof document !== "undefined"
-      ? document.documentElement.classList.contains("dark")
-      : false
-  );
 
   const toggleTheme = () => {
     const dark = document.documentElement.classList.toggle("dark");
-    setIsDark(dark);
     localStorage.setItem("agricare_theme", dark ? "dark" : "light");
   };
 
@@ -140,11 +134,12 @@ export default function Navbar() {
             <button
               type="button"
               onClick={toggleTheme}
-              suppressHydrationWarning
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
               title="Toggle dark mode"
+              aria-label="Toggle dark mode"
             >
-              {isDark ? <Sun className="h-5 w-5" /> : <Moon className="h-5 w-5" />}
+              <Sun className="h-5 w-5 theme-icon-sun" aria-hidden="true" />
+              <Moon className="h-5 w-5 theme-icon-moon" aria-hidden="true" />
             </button>
 
             {/* Notification Bell */}
