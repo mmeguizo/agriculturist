@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword, FirebaseError } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { UserRole, UserProfile } from "@/lib/types";
@@ -49,11 +49,16 @@ export default function RegisterPage() {
         uid = userCred.user.uid;
       } catch (authError) {
         // If API key is dummy or auth fails due to missing Firebase config, generate a mock UID for local demo
+        const errObj = authError as { code?: unknown; message?: unknown };
+        const code = typeof errObj === "object" && errObj !== null ? String(errObj.code ?? "") : "";
+        const message =
+          typeof errObj === "object" && errObj !== null
+            ? String(errObj.message ?? "")
+            : "";
         const isInvalidKey =
-          authError instanceof FirebaseError &&
-          (authError.code === "auth/api-key-not-valid" ||
-            authError.code === "auth/invalid-api-key" ||
-            authError.message.includes("API key not valid"));
+          code === "auth/api-key-not-valid" ||
+          code === "auth/invalid-api-key" ||
+          message.includes("API key not valid");
         if (isInvalidKey) {
           console.warn("Using demo registration fallback due to missing Firebase API key.");
           uid = "demo-" + Math.random().toString(36).substring(2, 9);
