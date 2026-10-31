@@ -24,7 +24,6 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
 
     const prompt = `You are an expert agricultural plant pathologist AI assistant. Analyze the following images of a ${cropType} plant that a farmer has reported.
 
@@ -56,20 +55,39 @@ Respond STRICTLY in this JSON format (no markdown, no code fences, just raw JSON
       };
     });
 
+    const MODEL_CANDIDATES = [
+      "gemini-3.8-flash",
+      "gemini-3.6-flash",
+      "gemini-flash-latest",
+      "gemini-flash-lite-latest",
+    ];
+
     let text = "";
-    for (let attempt = 0; attempt < 3; attempt += 1) {
-      try {
-        const result = await model.generateContent([prompt, ...imageParts]);
-        text = result.response.text();
-        break;
-      } catch (err) {
-        const status = (err as { status?: number })?.status;
-        if ((status === 429 || status === 503) && attempt < 2) {
-          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
-          continue;
+    let lastError: unknown = null;
+
+    for (const modelName of MODEL_CANDIDATES) {
+      const model = genAI.getGenerativeModel({ model: modelName });
+      for (let attempt = 0; attempt < 2; attempt += 1) {
+        try {
+          const result = await model.generateContent([prompt, ...imageParts]);
+          text = result.response.text();
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+          const status = (err as { status?: number })?.status;
+          if (status === 429 || status === 503) {
+            await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+            continue;
+          }
+          break;
         }
-        throw err;
       }
+      if (text) break;
+    }
+
+    if (!text) {
+      throw lastError || new Error("All Gemini models failed to respond.");
     }
 
     const cleaned = text
@@ -88,13 +106,9 @@ Respond STRICTLY in this JSON format (no markdown, no code fences, just raw JSON
     });
   } catch (error) {
     console.error("AI Analysis error:", error);
-    return NextResponse.json({
-      diseaseName: "Pest / Disease Damage (Inspection Recommended)",
-      severity: "Moderate",
-      description: "Automated scan flagged foliage stress. An agriculturist will examine the uploaded photos.",
-      recommendedTreatment: "Isolate symptomatic plants and await verified recommendation from extension officer.",
-      preventiveMeasures: "Maintain field sanitation and soil moisture checks.",
-      confidence: "Low",
-    });
+    return NextResponse.json(
+      { error: "AI analysis is temporarily unavailable. Please try again shortly." },
+      { status: 503 }
+    );
   }
 }

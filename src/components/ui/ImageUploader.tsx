@@ -6,9 +6,46 @@ import toast from "react-hot-toast";
 
 interface ImageUploaderProps {
   images: string[]; // base64 data URLs
-  onImagesChange: (images: string[]) => void;
+  onImagesChange: React.Dispatch<React.SetStateAction<string[]>>;
   minRequired?: number;
   maxAllowed?: number;
+}
+
+const MAX_DIMENSION = 1280;
+const JPEG_QUALITY = 0.82;
+
+/**
+ * Downscale and re-encode an image file to a compact JPEG data URL so the
+ * upload, AI analysis, and storage requests stay well under size limits.
+ */
+function compressImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error("Failed to read image"));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error("Failed to decode image"));
+      img.onload = () => {
+        const maxSide = Math.max(img.width, img.height);
+        const scale = maxSide > MAX_DIMENSION ? MAX_DIMENSION / maxSide : 1;
+        const width = Math.round(img.width * scale);
+        const height = Math.round(img.height * scale);
+
+        const canvas = document.createElement("canvas");
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(reader.result as string);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, width, height);
+        resolve(canvas.toDataURL("image/jpeg", JPEG_QUALITY));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
 }
 
 export default function ImageUploader({
@@ -36,12 +73,13 @@ export default function ImageUploader({
         return;
       }
 
-      const reader = new FileReader();
-      reader.onload = (event) => {
-        const base64 = event.target?.result as string;
-        onImagesChange([...images, base64]);
-      };
-      reader.readAsDataURL(file);
+      compressImage(file)
+        .then((compressed) => {
+          onImagesChange((prev) => [...prev, compressed]);
+        })
+        .catch(() => {
+          toast.error(`Could not process ${file.name}.`);
+        });
     });
 
     if (fileInputRef.current) fileInputRef.current.value = "";
