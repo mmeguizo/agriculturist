@@ -3,7 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { createUserWithEmailAndPassword } from "firebase/auth";
+import { createUserWithEmailAndPassword, FirebaseError } from "firebase/auth";
 import { doc, setDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { UserRole, UserProfile } from "@/lib/types";
@@ -47,13 +47,14 @@ export default function RegisterPage() {
       try {
         const userCred = await createUserWithEmailAndPassword(auth, email, password);
         uid = userCred.user.uid;
-      } catch (authError: any) {
+      } catch (authError) {
         // If API key is dummy or auth fails due to missing Firebase config, generate a mock UID for local demo
-        if (
-          authError.code === "auth/api-key-not-valid" ||
-          authError.code === "auth/invalid-api-key" ||
-          authError.message?.includes("API key not valid")
-        ) {
+        const isInvalidKey =
+          authError instanceof FirebaseError &&
+          (authError.code === "auth/api-key-not-valid" ||
+            authError.code === "auth/invalid-api-key" ||
+            authError.message.includes("API key not valid"));
+        if (isInvalidKey) {
           console.warn("Using demo registration fallback due to missing Firebase API key.");
           uid = "demo-" + Math.random().toString(36).substring(2, 9);
         } else {
@@ -88,9 +89,13 @@ export default function RegisterPage() {
 
       toast.success("Account created successfully! Please wait for Admin approval.");
       router.push("/pending-approval");
-    } catch (error: any) {
+    } catch (error) {
       console.error("Registration error:", error);
-      toast.error(error.message || "Failed to create account. Please try again.");
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Failed to create account. Please try again."
+      );
     } finally {
       setLoading(false);
     }

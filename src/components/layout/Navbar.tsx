@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { signOut } from "firebase/auth";
@@ -29,11 +29,11 @@ export default function Navbar() {
   const router = useRouter();
   const { userProfile, setUserProfile } = useAuth();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const [isDark, setIsDark] = useState(false);
-
-  useEffect(() => {
-    setIsDark(document.documentElement.classList.contains("dark"));
-  }, []);
+  const [isDark, setIsDark] = useState<boolean>(() =>
+    typeof document !== "undefined"
+      ? document.documentElement.classList.contains("dark")
+      : false
+  );
 
   const toggleTheme = () => {
     const dark = document.documentElement.classList.toggle("dark");
@@ -140,6 +140,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={toggleTheme}
+              suppressHydrationWarning
               className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
               title="Toggle dark mode"
             >
