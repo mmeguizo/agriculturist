@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { useResolvedImageUrls } from "@/lib/use-resolved-images";
 
 interface ImageGalleryProps {
   images: string[];
@@ -14,6 +15,7 @@ export default function ImageGallery({
 }: ImageGalleryProps) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const resolved = useResolvedImageUrls(images);
 
   if (!images || images.length === 0) {
     return (
@@ -30,9 +32,9 @@ export default function ImageGallery({
 
   const navigate = (direction: "prev" | "next") => {
     if (direction === "prev") {
-      setCurrentIndex((prev) => (prev === 0 ? images.length - 1 : prev - 1));
+      setCurrentIndex((prev) => (prev === 0 ? resolved.length - 1 : prev - 1));
     } else {
-      setCurrentIndex((prev) => (prev === images.length - 1 ? 0 : prev + 1));
+      setCurrentIndex((prev) => (prev === resolved.length - 1 ? 0 : prev + 1));
     }
   };
 
@@ -40,7 +42,7 @@ export default function ImageGallery({
     <>
       {/* Thumbnail grid */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {images.map((url, index) => (
+        {resolved.map((url, index) => (
           <button
             key={index}
             type="button"
@@ -74,7 +76,7 @@ export default function ImageGallery({
             <X className="h-6 w-6" />
           </button>
 
-          {images.length > 1 && (
+          {resolved.length > 1 && (
             <>
               <button
                 type="button"
@@ -98,14 +100,14 @@ export default function ImageGallery({
 
           <div className="max-h-[85vh] max-w-[90vw] flex items-center justify-center">
             <img
-              src={images[currentIndex]}
+              src={resolved[currentIndex]}
               alt={`${alt} ${currentIndex + 1}`}
               className="max-h-[85vh] max-w-[90vw] object-contain rounded-md shadow-2xl"
             />
           </div>
 
           <div className="absolute bottom-4 left-1/2 -translate-x-1/2 bg-black/70 text-white text-xs px-3 py-1.5 rounded-full font-medium tracking-wide">
-            Photo {currentIndex + 1} of {images.length}
+            Photo {currentIndex + 1} of {resolved.length}
           </div>
         </div>
       )}

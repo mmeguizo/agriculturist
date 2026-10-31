@@ -63,3 +63,37 @@ export async function uploadImageToSupabase(
   const { data } = supabase.storage.from(bucket).getPublicUrl(path);
   return data.publicUrl;
 }
+
+/**
+ * Supabase signed URLs for private buckets stay valid for this many seconds.
+ * 315360000 seconds = 10 years, effectively permanent for this app's needs.
+ */
+const SIGNED_URL_EXPIRY_SECONDS = 315360000;
+
+/**
+ * Convert a stored Supabase public object URL into a signed URL so the image
+ * remains viewable even when the storage bucket is not public. Non-Supabase
+ * URLs (for example inline `data:` fallbacks) are returned unchanged.
+ */
+export async function resolveSupabaseImageUrl(url: string): Promise<string> {
+  const marker = "/storage/v1/object/public/";
+  const markerIndex = url.indexOf(marker);
+  if (markerIndex === -1) return url;
+
+  const rest = url.slice(markerIndex + marker.length).split("?")[0];
+  const slashIndex = rest.indexOf("/");
+  if (slashIndex === -1) return url;
+
+  const bucket = rest.slice(0, slashIndex);
+  const path = rest.slice(slashIndex + 1);
+
+  const supabase = getSupabaseClient();
+  if (!supabase) return url;
+
+  const { data, error } = await supabase.storage
+    .from(bucket)
+    .createSignedUrl(path, SIGNED_URL_EXPIRY_SECONDS);
+
+  if (error || !data) return url;
+  return data.signedUrl;
+}

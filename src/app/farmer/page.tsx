@@ -9,6 +9,7 @@ import { Incident } from "@/lib/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { IncidentStatusBadge } from "@/components/ui/StatusBadge";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import { useResolvedImageUrls } from "@/lib/use-resolved-images";
 import {
   PlusCircle,
   FileText,
@@ -20,6 +21,27 @@ import {
   Calendar,
   MapPin,
 } from "lucide-react";
+
+function IncidentThumbs({ images }: { images: string[] }) {
+  const resolved = useResolvedImageUrls(images);
+
+  return (
+    <div className="grid grid-cols-4 gap-1.5 my-3">
+      {resolved.slice(0, 4).map((img, idx) => (
+        <div
+          key={idx}
+          className="aspect-square rounded-md overflow-hidden bg-gray-100 border border-gray-100 relative"
+        >
+          <img
+            src={img}
+            alt="Crop photo"
+            className="w-full h-full object-cover"
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
 
 export default function FarmerDashboard() {
   const { userProfile, firebaseUser } = useAuth();
@@ -211,20 +233,7 @@ export default function FarmerDashboard() {
                     </div>
 
                     {/* Image Previews */}
-                    <div className="grid grid-cols-4 gap-1.5 my-3">
-                      {(incident.imageUrls || []).slice(0, 4).map((img, idx) => (
-                        <div
-                          key={idx}
-                          className="aspect-square rounded-md overflow-hidden bg-gray-100 border border-gray-100 relative"
-                        >
-                          <img
-                            src={img}
-                            alt="Crop photo"
-                            className="w-full h-full object-cover"
-                          />
-                        </div>
-                      ))}
-                    </div>
+                    <IncidentThumbs images={incident.imageUrls || []} />
 
                     {/* AI Diagnosis Snippet */}
                     {incident.aiAnalysis && (
