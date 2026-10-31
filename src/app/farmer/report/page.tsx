@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
@@ -44,6 +44,22 @@ export default function ReportIncidentPage() {
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [locating, setLocating] = useState(false);
+
+  // If the browser restores this page from the back/forward cache, clear the
+  // form so stale images and details are not shown again.
+  useEffect(() => {
+    const onPageShow = (event: PageTransitionEvent) => {
+      if (event.persisted) {
+        setCropType(CROP_OPTIONS[0]);
+        setCustomCrop("");
+        setDescription("");
+        setLocation(userProfile?.farmLocation || "");
+        setImages([]);
+      }
+    };
+    window.addEventListener("pageshow", onPageShow);
+    return () => window.removeEventListener("pageshow", onPageShow);
+  }, [userProfile?.farmLocation]);
 
   const activeUserId = firebaseUser?.uid || userProfile?.id || "demo-farmer-id";
   const activeUserName = userProfile?.fullName || "Pedro Penduko";
@@ -198,6 +214,14 @@ export default function ReportIncidentPage() {
       existingNotifs.unshift(agriculturistNotif);
       localStorage.setItem("agricare_notifications", JSON.stringify(existingNotifs));
 
+      // Clear the form so back/forward navigation does not restore the
+      // previously submitted images and details.
+      setCropType(CROP_OPTIONS[0]);
+      setCustomCrop("");
+      setDescription("");
+      setLocation(userProfile?.farmLocation || "");
+      setImages([]);
+
       toast.success("Incident submitted! AI scan finished and queued for review.");
       router.push(`/farmer/incident/${incidentId}`);
     } catch (err: unknown) {
@@ -222,7 +246,7 @@ export default function ReportIncidentPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} className="card space-y-5 shadow-sm">
+        <form onSubmit={handleSubmit} autoComplete="off" className="card space-y-5 shadow-sm">
           {/* Crop Type Selection */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">

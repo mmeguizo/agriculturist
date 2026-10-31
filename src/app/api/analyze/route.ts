@@ -24,7 +24,7 @@ export async function POST(request: NextRequest) {
     }
 
     const genAI = new GoogleGenerativeAI(apiKey);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3.8-flash" });
 
     const prompt = `You are an expert agricultural plant pathologist AI assistant. Analyze the following images of a ${cropType} plant that a farmer has reported.
 
@@ -56,8 +56,22 @@ Respond STRICTLY in this JSON format (no markdown, no code fences, just raw JSON
       };
     });
 
-    const result = await model.generateContent([prompt, ...imageParts]);
-    const text = result.response.text();
+    let text = "";
+    for (let attempt = 0; attempt < 3; attempt += 1) {
+      try {
+        const result = await model.generateContent([prompt, ...imageParts]);
+        text = result.response.text();
+        break;
+      } catch (err) {
+        const status = (err as { status?: number })?.status;
+        if ((status === 429 || status === 503) && attempt < 2) {
+          await new Promise((resolve) => setTimeout(resolve, 1000 * (attempt + 1)));
+          continue;
+        }
+        throw err;
+      }
+    }
+
     const cleaned = text
       .replace(/```json\s*/g, "")
       .replace(/```\s*/g, "")
