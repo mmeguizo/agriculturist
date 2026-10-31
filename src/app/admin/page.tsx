@@ -17,6 +17,8 @@ import {
   Database,
   PlusCircle,
   ArrowRight,
+  BarChart3,
+  Printer,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -24,6 +26,8 @@ export default function AdminDashboard() {
   const [incidents, setIncidents] = useState<Incident[]>([]);
   const [advisories, setAdvisories] = useState<Advisory[]>([]);
   const [loading, setLoading] = useState(true);
+  const [reportStart, setReportStart] = useState("");
+  const [reportEnd, setReportEnd] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
@@ -77,6 +81,104 @@ export default function AdminDashboard() {
   ).length;
   const resolvedIncidents = incidents.filter((i) => i.status === "resolved").length;
 
+  // Incidents grouped by crop type for the overview chart
+  const cropCounts = incidents.reduce<Record<string, number>>((acc, incident) => {
+    const crop = (incident.cropType || "").trim() || "Unknown";
+    acc[crop] = (acc[crop] || 0) + 1;
+    return acc;
+  }, {});
+  const cropChart = Object.entries(cropCounts)
+    .map(([crop, count]) => ({ crop, count }))
+    .sort((a, b) => b.count - a.count);
+  const maxCropCount = cropChart.length ? cropChart[0].count : 1;
+
+  // Incidents filtered for the printable date-range report
+  const filteredIncidents = incidents
+    .filter((incident) => {
+      const created = new Date(incident.createdAt).getTime();
+      if (reportStart && created < new Date(`${reportStart}T00:00:00`).getTime()) {
+        return false;
+      }
+      if (reportEnd && created > new Date(`${reportEnd}T23:59:59`).getTime()) {
+        return false;
+      }
+      return true;
+    })
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+  const printReport = () => {
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;");
+
+    const startLabel = reportStart
+      ? new Date(`${reportStart}T00:00:00`).toLocaleDateString()
+      : "Beginning";
+    const endLabel = reportEnd
+      ? new Date(`${reportEnd}T23:59:59`).toLocaleDateString()
+      : "Today";
+
+    const rows = filteredIncidents
+      .map(
+        (incident) => `
+          <tr>
+            <td>${escapeHtml(new Date(incident.createdAt).toLocaleDateString())}</td>
+            <td>${escapeHtml(incident.farmerName || "")}</td>
+            <td>${escapeHtml(incident.cropType || "")}</td>
+            <td>${escapeHtml(incident.status || "")}</td>
+            <td>${escapeHtml((incident.description || "").slice(0, 200))}</td>
+          </tr>`
+      )
+      .join("");
+
+    const html = `<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>AgriCare Incident Report</title>
+    <style>
+      body { font-family: Arial, Helvetica, sans-serif; color: #111; padding: 24px; }
+      h1 { font-size: 20px; margin: 0 0 4px; }
+      .sub { color: #555; font-size: 13px; margin: 0 0 16px; }
+      table { border-collapse: collapse; width: 100%; font-size: 12px; }
+      th, td { border: 1px solid #ccc; padding: 6px 8px; text-align: left; vertical-align: top; }
+      th { background: #f3f4f6; }
+      .total { margin-top: 12px; font-size: 13px; font-weight: bold; }
+    </style>
+  </head>
+  <body>
+    <h1>AgriCare Incident Report</h1>
+    <p class="sub">Period: ${escapeHtml(startLabel)} &mdash; ${escapeHtml(endLabel)}</p>
+    <table>
+      <thead>
+        <tr>
+          <th>Date</th>
+          <th>Farmer</th>
+          <th>Crop Type</th>
+          <th>Status</th>
+          <th>Description</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${rows || '<tr><td colspan="5">No incidents in the selected date range.</td></tr>'}
+      </tbody>
+    </table>
+    <p class="total">Total incidents: ${filteredIncidents.length}</p>
+  </body>
+</html>`;
+
+    const printWindow = window.open("", "_blank", "width=1000,height=700");
+    if (!printWindow) return;
+    printWindow.document.open();
+    printWindow.document.write(html);
+    printWindow.document.close();
+    printWindow.focus();
+    printWindow.print();
+  };
+
   const stats = [
     { label: "Registered Users", value: users.length, icon: Users, color: "bg-blue-100 text-blue-700" },
     { label: "Pending Approvals", value: pendingUsers, icon: UserCheck, color: "bg-amber-100 text-amber-700" },
@@ -122,6 +224,33 @@ export default function AdminDashboard() {
               </div>
             );
           })}
+        </div>
+
+        <div className="card">
+          <div className="flex items-center gap-2 mb-4">
+            <BarChart3 className="w-5 h-5 text-purple-600" />
+            <h3 className="font-bold text-gray-900">Incidents by Crop Type</h3>
+          </div>
+          {cropChart.length === 0 ? (
+            <p className="text-sm text-gray-500 text-center py-6">No incidents recorded yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {cropChart.map(({ crop, count }) => (
+                <div key={crop}>
+                  <div className="flex items-center justify-between text-xs mb-1">
+                    <span className="font-semibold text-gray-700">{crop}</span>
+                    <span className="font-bold text-gray-900">{count}</span>
+                  </div>
+                  <div className="h-4 w-full bg-gray-100 rounded-full overflow-hidden">
+                    <div
+                      className="h-full bg-gradient-to-r from-purple-600 to-indigo-500 rounded-full transition-all"
+                      style={{ width: `${(count / maxCropCount) * 100}%` }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -195,6 +324,84 @@ export default function AdminDashboard() {
               ))}
             </div>
           )}
+        </div>
+
+        <div className="card">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+            <div className="flex items-center gap-2">
+              <Printer className="w-5 h-5 text-purple-600" />
+              <h3 className="font-bold text-gray-900">Printable Incident Report</h3>
+            </div>
+            <button type="button" onClick={printReport} className="btn-primary text-sm">
+              <Printer className="w-4 h-4" /> Print Report
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Start Date
+              </label>
+              <input
+                type="date"
+                value={reportStart}
+                onChange={(e) => setReportStart(e.target.value)}
+                className="input-field text-sm"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                End Date
+              </label>
+              <input
+                type="date"
+                value={reportEnd}
+                onChange={(e) => setReportEnd(e.target.value)}
+                className="input-field text-sm"
+              />
+            </div>
+          </div>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-xs uppercase tracking-wider text-gray-500 border-b border-gray-200">
+                  <th className="py-2 pr-3">Date</th>
+                  <th className="py-2 pr-3">Farmer</th>
+                  <th className="py-2 pr-3">Crop</th>
+                  <th className="py-2 pr-3">Status</th>
+                  <th className="py-2">Description</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {filteredIncidents.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} className="py-4 text-center text-gray-500">
+                      No incidents in the selected date range.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredIncidents.map((incident) => (
+                    <tr key={incident.id} className="text-gray-700">
+                      <td className="py-2 pr-3 whitespace-nowrap">
+                        {new Date(incident.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="py-2 pr-3">{incident.farmerName}</td>
+                      <td className="py-2 pr-3">{incident.cropType}</td>
+                      <td className="py-2 pr-3 capitalize">{incident.status}</td>
+                      <td className="py-2">
+                        {incident.description.slice(0, 120)}
+                        {incident.description.length > 120 ? "…" : ""}
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+          <p className="text-xs text-gray-500 mt-2">
+            {filteredIncidents.length} incident(s) in range
+          </p>
         </div>
 
         <Link
