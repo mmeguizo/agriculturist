@@ -25,7 +25,7 @@ export default function LandingPage() {
               href="/login"
               className="text-sm font-semibold text-gray-700 hover:text-green-700 px-3 py-2 rounded-lg transition-colors"
             >
-              Sign In
+              Sign In 
             </Link>
             <Link
               href="/register"
