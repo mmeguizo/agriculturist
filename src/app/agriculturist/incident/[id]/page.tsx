@@ -71,13 +71,12 @@ function CaseReviewContent() {
       const localIncident = localStore.incidents.getAll().find((i) => i.id === id);
       const localRec = localStore.recommendations.getAll().find((r) => r.incidentId === id);
       let pestLocal = localStore.pests.getAll();
+      let loadedIncident: Incident | null = localIncident || null;
 
       try {
         const snap = await getDoc(doc(db, "incidents", id));
         if (snap.exists()) {
-          setIncident({ id: snap.id, ...snap.data() } as Incident);
-        } else if (localIncident) {
-          setIncident(localIncident);
+          loadedIncident = { id: snap.id, ...snap.data() } as Incident;
         }
 
         const recSnap = await getDoc(doc(db, "recommendations", `rec_${id}`));
@@ -93,18 +92,20 @@ function CaseReviewContent() {
         }
       } catch (err) {
         console.warn("Firestore case load error, using local data:", err);
-        if (localIncident) setIncident(localIncident);
+        loadedIncident = localIncident || loadedIncident;
         if (localRec) setExistingRec(localRec);
       }
 
+      if (loadedIncident) setIncident(loadedIncident);
       setPestEntries(pestLocal);
 
-      // Pre-fill the recommendation form from the AI analysis when available.
-      const base = localIncident?.aiAnalysis;
-      if (base) {
-        setDiagnosis((prev) => prev || base.diseaseName);
-        setTreatmentPlan((prev) => prev || base.recommendedTreatment);
-        setPreventiveAdvice((prev) => prev || base.preventiveMeasures);
+      // Pre-fill the recommendation form from the AI analysis when available,
+      // so the agriculturist can accept or edit the draft instead of retyping.
+      const ai = loadedIncident?.aiAnalysis;
+      if (ai) {
+        setDiagnosis(ai.diseaseName || "");
+        setTreatmentPlan(ai.recommendedTreatment || "");
+        setPreventiveAdvice(ai.preventiveMeasures || "");
       }
 
       setLoading(false);
