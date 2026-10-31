@@ -68,6 +68,8 @@ export interface Recommendation {
   basedOnAI: boolean;
   // AI confidence level captured when the recommendation was created
   confidence?: string;
+  // Products/chemicals the agriculturist recommends the farmer buy
+  purchaseRecommendation?: string;
   createdAt: string;
 }
 

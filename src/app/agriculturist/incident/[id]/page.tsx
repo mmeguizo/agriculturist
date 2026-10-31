@@ -76,6 +76,7 @@ function CaseReviewContent() {
   const [diagnosis, setDiagnosis] = useState("");
   const [treatmentPlan, setTreatmentPlan] = useState("");
   const [preventiveAdvice, setPreventiveAdvice] = useState("");
+  const [purchaseRecommendation, setPurchaseRecommendation] = useState("");
   const [basedOnAI, setBasedOnAI] = useState(true);
 
   useEffect(() => {
@@ -147,6 +148,7 @@ function CaseReviewContent() {
         diagnosis: diagnosis.trim(),
         treatmentPlan: treatmentPlan.trim(),
         preventiveAdvice: preventiveAdvice.trim(),
+        purchaseRecommendation: purchaseRecommendation.trim(),
         basedOnAI,
         confidence: incident.aiAnalysis?.confidence || "",
         createdAt: new Date().toISOString(),
@@ -315,6 +317,12 @@ function CaseReviewContent() {
                 {existingRec.preventiveAdvice}
               </p>
             )}
+            {existingRec.purchaseRecommendation && (
+              <p className="text-sm text-gray-800 whitespace-pre-line">
+                <strong>Recommended to buy:</strong>{"\n"}
+                {existingRec.purchaseRecommendation}
+              </p>
+            )}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="card border-2 border-blue-100 space-y-4">
@@ -384,6 +392,19 @@ function CaseReviewContent() {
                 onChange={(e) => setPreventiveAdvice(e.target.value)}
                 className="input-field text-sm"
                 placeholder="Cultural practices and prevention measures..."
+              />
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
+                Recommend What to Buy
+              </label>
+              <textarea
+                rows={3}
+                value={purchaseRecommendation}
+                onChange={(e) => setPurchaseRecommendation(e.target.value)}
+                className="input-field text-sm"
+                placeholder="Products or chemicals to purchase, including brand and dosage if applicable..."
               />
             </div>
 

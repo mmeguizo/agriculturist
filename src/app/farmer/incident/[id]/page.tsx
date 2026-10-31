@@ -275,6 +275,17 @@ function IncidentDetailContent() {
                   {recommendation.preventiveAdvice}
                 </p>
               </div>
+
+              {recommendation.purchaseRecommendation && (
+                <div className="bg-white p-3.5 rounded-lg border border-emerald-200 shadow-xs">
+                  <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block mb-1">
+                    What to Buy
+                  </span>
+                  <p className="whitespace-pre-line text-gray-800 leading-relaxed">
+                    {recommendation.purchaseRecommendation}
+                  </p>
+                </div>
+              )}
             </div>
           </div>
         ) : (
