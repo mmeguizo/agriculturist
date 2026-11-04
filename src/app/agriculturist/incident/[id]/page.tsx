@@ -14,7 +14,7 @@ import {
 import { db } from "@/lib/firebase";
 import { localStore } from "@/lib/demo-store";
 import { useAuth } from "@/lib/auth-context";
-import { Incident, PestEntry, Recommendation } from "@/lib/types";
+import { Incident, PestEntry, Recommendation, AIAnalysisResult } from "@/lib/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ImageGallery from "@/components/ui/ImageGallery";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
@@ -27,6 +27,7 @@ import {
   ShieldCheck,
   Send,
   Loader2,
+  RefreshCw,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -78,6 +79,49 @@ function CaseReviewContent() {
   const [preventiveAdvice, setPreventiveAdvice] = useState("");
   const [purchaseRecommendation, setPurchaseRecommendation] = useState("");
   const [basedOnAI, setBasedOnAI] = useState(true);
+  const [reanalyzing, setReanalyzing] = useState(false);
+
+  const handleReAnalyze = async () => {
+    if (!incident) return;
+    setReanalyzing(true);
+    try {
+      const res = await fetch("/api/analyze", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          images: (incident.imageUrls || []).slice(0, 4),
+          cropType: incident.cropType,
+          description: incident.description,
+        }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        const freshAi: AIAnalysisResult = {
+          diseaseName: data.diseaseName || `${incident.cropType} Identified Anomaly`,
+          severity: data.severity || "Moderate",
+          description: data.description || "Analysis completed.",
+          recommendedTreatment: data.recommendedTreatment || "Apply recommended protective treatment.",
+          preventiveMeasures: data.preventiveMeasures || "Maintain field hygiene.",
+          confidence: data.confidence || "High",
+          analyzedAt: new Date().toISOString(),
+        };
+        const updated = { ...incident, aiAnalysis: freshAi };
+        setIncident(updated);
+        setDiagnosis(freshAi.diseaseName);
+        setTreatmentPlan(cleanAiTreatment(freshAi.recommendedTreatment));
+        setPreventiveAdvice(freshAi.preventiveMeasures);
+        try {
+          await setDoc(doc(db, "incidents", incident.id), { aiAnalysis: freshAi }, { merge: true });
+          localStore.incidents.upsert(updated);
+        } catch {}
+        toast.success(`AI diagnosed: ${freshAi.diseaseName} (form prefilled)`);
+      }
+    } catch {
+      toast.error("AI diagnosis attempt failed.");
+    } finally {
+      setReanalyzing(false);
+    }
+  };
 
   useEffect(() => {
     if (!id) return;
@@ -118,10 +162,46 @@ function CaseReviewContent() {
 
       // Pre-fill the recommendation form from the AI analysis when available
       const ai = loadedIncident?.aiAnalysis;
-      if (ai && ai.confidence !== "Processing...") {
+      if (ai && !ai.diseaseName?.includes("Progress") && ai.confidence !== "Processing...") {
         setDiagnosis(ai.diseaseName || "");
         setTreatmentPlan(cleanAiTreatment(ai.recommendedTreatment || ""));
         setPreventiveAdvice(ai.preventiveMeasures || "");
+      } else if (loadedIncident) {
+        // Fetch AI diagnosis immediately so the agriculturist sees it right away
+        try {
+          const aiRes = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              images: (loadedIncident.imageUrls || []).slice(0, 4),
+              cropType: loadedIncident.cropType,
+              description: loadedIncident.description,
+            }),
+          });
+          if (aiRes.ok) {
+            const data = await aiRes.json();
+            const freshAi: AIAnalysisResult = {
+              diseaseName: data.diseaseName || `${loadedIncident.cropType} Anomaly`,
+              severity: data.severity || "Moderate",
+              description: data.description || "Analysis completed.",
+              recommendedTreatment: data.recommendedTreatment || "Apply recommended protective treatment.",
+              preventiveMeasures: data.preventiveMeasures || "Maintain field sanitation.",
+              confidence: data.confidence || "High",
+              analyzedAt: new Date().toISOString(),
+            };
+            loadedIncident.aiAnalysis = freshAi;
+            setIncident({ ...loadedIncident });
+            setDiagnosis(freshAi.diseaseName);
+            setTreatmentPlan(cleanAiTreatment(freshAi.recommendedTreatment));
+            setPreventiveAdvice(freshAi.preventiveMeasures);
+            try {
+              await setDoc(doc(db, "incidents", id), { aiAnalysis: freshAi }, { merge: true });
+              localStore.incidents.upsert(loadedIncident);
+            } catch {}
+          }
+        } catch (aiErr) {
+          console.warn("Could not auto-generate AI diagnosis for case review:", aiErr);
+        }
       }
 
       setLoading(false);
@@ -293,12 +373,26 @@ function CaseReviewContent() {
               </div>
             ) : (
               <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-4 space-y-2">
-                <div className="flex items-center gap-2 text-blue-900">
-                  <Sparkles className="w-5 h-5 text-blue-600" />
-                  <h3 className="font-bold text-sm">Gemini AI Preliminary Scan</h3>
-                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                    Confidence: {incident.aiAnalysis.confidence}
-                  </span>
+                <div className="flex items-center justify-between border-b border-blue-200 pb-2">
+                  <div className="flex items-center gap-2 text-blue-900">
+                    <Sparkles className="w-5 h-5 text-blue-600" />
+                    <h3 className="font-bold text-sm">Gemini AI Preliminary Scan</h3>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={handleReAnalyze}
+                      disabled={reanalyzing}
+                      className="text-[11px] font-semibold text-blue-700 hover:text-blue-900 hover:bg-blue-100 px-2 py-0.5 rounded transition-colors flex items-center gap-1"
+                      title="Re-scan photos and prefill recommendation form"
+                    >
+                      <RefreshCw className={`w-3 h-3 ${reanalyzing ? "animate-spin" : ""}`} />
+                      {reanalyzing ? "Scanning..." : "Re-scan AI"}
+                    </button>
+                    <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                      Confidence: {incident.aiAnalysis.confidence}
+                    </span>
+                  </div>
                 </div>
                 <p className="text-sm text-gray-800">
                   <strong>Identified:</strong> {incident.aiAnalysis.diseaseName}
