@@ -3,10 +3,10 @@
 import { Suspense, useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
-import { doc, onSnapshot, collection, query, where } from "firebase/firestore";
+import { doc, onSnapshot, collection, query, where, setDoc } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
-import { Incident, Recommendation } from "@/lib/types";
+import { Incident, Recommendation, AIAnalysisResult } from "@/lib/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import { IncidentStatusBadge } from "@/components/ui/StatusBadge";
 import ImageGallery from "@/components/ui/ImageGallery";
@@ -17,10 +17,9 @@ import {
   MapPin,
   Sparkles,
   ShieldCheck,
-  CheckCircle2,
   Clock,
   AlertTriangle,
-  FileCheck2,
+  Loader2,
 } from "lucide-react";
 
 export default function FarmerIncidentDetailPage() {
@@ -44,7 +43,6 @@ function IncidentDetailContent() {
   const { userProfile, firebaseUser } = useAuth();
 
   // Seed from localStorage in the initializers so demo data paints instantly
-  // without a synchronous setState inside the effect.
   const [incident, setIncident] = useState<Incident | null>(() => {
     if (typeof window === "undefined") return null;
     const allIncidents: Incident[] = JSON.parse(
@@ -61,6 +59,61 @@ function IncidentDetailContent() {
   });
   const [loading, setLoading] = useState(true);
 
+  // Background fallback trigger if AI is still in "Processing..." state
+  useEffect(() => {
+    if (!incident || !incident.id) return;
+    if (incident.aiAnalysis?.confidence !== "Processing...") return;
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            images: incident.imageUrls.slice(0, 4),
+            cropType: incident.cropType,
+            description: incident.description,
+          }),
+        });
+        if (res.ok && !cancelled) {
+          const data = await res.json();
+          const updatedAi: AIAnalysisResult = {
+            diseaseName: data.diseaseName || "Analysis Completed",
+            severity: data.severity || "Moderate",
+            description: data.description || "Analysis completed.",
+            recommendedTreatment: data.recommendedTreatment || "Consult municipal extension officer.",
+            preventiveMeasures: data.preventiveMeasures || "Maintain field hygiene.",
+            confidence: data.confidence || "Medium",
+            analyzedAt: new Date().toISOString(),
+          };
+
+          try {
+            await setDoc(doc(db, "incidents", incident.id), { aiAnalysis: updatedAi }, { merge: true });
+          } catch {}
+
+          try {
+            const current = JSON.parse(localStorage.getItem("agricare_incidents") || "[]") as Incident[];
+            const target = current.find((i) => i.id === incident.id);
+            if (target) {
+              target.aiAnalysis = updatedAi;
+              localStorage.setItem("agricare_incidents", JSON.stringify(current));
+            }
+          } catch {}
+
+          setIncident((prev) => (prev ? { ...prev, aiAnalysis: updatedAi } : null));
+        }
+      } catch (err) {
+        console.warn("Background AI fetch attempt error:", err);
+      }
+    }, 2000);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [incident?.id, incident?.aiAnalysis?.confidence]);
+
   useEffect(() => {
     if (!id) return;
 
@@ -76,8 +129,7 @@ function IncidentDetailContent() {
       return { foundLocal, recLocal };
     };
 
-    // Subscribe to Firestore for realtime updates (agriculturist resolving
-    // the case will stream straight to the farmer without a reload).
+    // Subscribe to Firestore for realtime updates
     const unsubs: (() => void)[] = [];
     try {
       unsubs.push(
@@ -90,7 +142,6 @@ function IncidentDetailContent() {
             setLoading(false);
           },
           () => {
-            // Firestore unavailable — keep whatever localStorage has.
             setLoading(false);
           }
         )
@@ -111,9 +162,7 @@ function IncidentDetailContent() {
               } as Recommendation);
             }
           },
-          () => {
-            /* ignore — recommendation falls back to localStorage */
-          }
+          () => {}
         )
       );
     } catch (err) {
@@ -121,7 +170,7 @@ function IncidentDetailContent() {
       queueMicrotask(() => setLoading(false));
     }
 
-    // Listen for cross-tab demo updates (same browser, another tab resolves).
+    // Listen for cross-tab demo updates
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "agricare_incidents" || e.key === "agricare_recommendations") {
         const { foundLocal: f, recLocal: r } = readLocal();
@@ -159,6 +208,8 @@ function IncidentDetailContent() {
       </DashboardLayout>
     );
   }
+
+  const isAiProcessing = incident.aiAnalysis?.confidence === "Processing...";
 
   return (
     <DashboardLayout allowedRoles={["farmer"]}>
@@ -215,7 +266,7 @@ function IncidentDetailContent() {
             </p>
           </div>
 
-          {/* Uploaded Evidence Photos (Min 4 Photos) */}
+          {/* Uploaded Evidence Photos */}
           <div>
             <div className="flex items-center justify-between mb-2">
               <h3 className="text-xs font-bold uppercase tracking-wider text-gray-500">
@@ -302,43 +353,58 @@ function IncidentDetailContent() {
 
         {/* AI PRELIMINARY SCAN (Visible for quick reference) */}
         {incident.aiAnalysis && (
-          <div className="card bg-blue-50/60 border border-blue-200 space-y-3">
-            <div className="flex items-center justify-between border-b border-blue-200 pb-2.5">
-              <div className="flex items-center gap-2 text-blue-900">
-                <Sparkles className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-sm">Automated Gemini Plant Vision Scan</h3>
+          isAiProcessing ? (
+            <div className="card bg-blue-50/70 border-2 border-dashed border-blue-300 p-5 space-y-3">
+              <div className="flex items-center gap-2.5 text-blue-900">
+                <Sparkles className="w-5 h-5 text-blue-600 animate-spin" />
+                <h3 className="font-bold text-sm">Automated Gemini Plant Vision Scan in Progress</h3>
+                <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full ml-auto">
+                  Analyzing photos...
+                </span>
               </div>
-              <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                Confidence: {incident.aiAnalysis.confidence}
-              </span>
+              <p className="text-xs text-blue-800 leading-relaxed">
+                Our plant vision AI is currently analyzing your uploaded photos in the background. This card will update automatically with preliminary symptom assessment and potential treatments.
+              </p>
             </div>
+          ) : (
+            <div className="card bg-blue-50/60 border border-blue-200 space-y-3">
+              <div className="flex items-center justify-between border-b border-blue-200 pb-2.5">
+                <div className="flex items-center gap-2 text-blue-900">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-bold text-sm">Automated Gemini Plant Vision Scan</h3>
+                </div>
+                <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                  Confidence: {incident.aiAnalysis.confidence}
+                </span>
+              </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-800">
-              <div>
-                <span className="font-bold text-blue-900 block mb-0.5">Identified Problem:</span>
-                <span className="font-semibold text-sm text-gray-900">{incident.aiAnalysis.diseaseName}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs text-gray-800">
+                <div>
+                  <span className="font-bold text-blue-900 block mb-0.5">Identified Problem:</span>
+                  <span className="font-semibold text-sm text-gray-900">{incident.aiAnalysis.diseaseName}</span>
+                </div>
+                <div>
+                  <span className="font-bold text-blue-900 block mb-0.5">Estimated Severity:</span>
+                  <span className="font-bold text-amber-700">{incident.aiAnalysis.severity}</span>
+                </div>
               </div>
-              <div>
-                <span className="font-bold text-blue-900 block mb-0.5">Estimated Severity:</span>
-                <span className="font-bold text-amber-700">{incident.aiAnalysis.severity}</span>
+
+              <div className="text-xs text-gray-700 space-y-2 pt-1 border-t border-blue-100">
+                <div>
+                  <span className="font-bold text-blue-900">Symptom Assessment:</span>
+                  <p className="mt-0.5 text-gray-600">{incident.aiAnalysis.description}</p>
+                </div>
+                <div>
+                  <span className="font-bold text-blue-900">Suggested Action Draft:</span>
+                  <p className="mt-0.5 text-gray-600 whitespace-pre-line">{incident.aiAnalysis.recommendedTreatment}</p>
+                </div>
               </div>
+
+              <p className="text-[10px] text-blue-700/80 italic pt-1">
+                * Note: The AI analysis serves as a preliminary triage indicator to aid the extension officer in formulating your final treatment plan.
+              </p>
             </div>
-
-            <div className="text-xs text-gray-700 space-y-2 pt-1 border-t border-blue-100">
-              <div>
-                <span className="font-bold text-blue-900">Symptom Assessment:</span>
-                <p className="mt-0.5 text-gray-600">{incident.aiAnalysis.description}</p>
-              </div>
-              <div>
-                <span className="font-bold text-blue-900">Suggested Action Draft:</span>
-                <p className="mt-0.5 text-gray-600 whitespace-pre-line">{incident.aiAnalysis.recommendedTreatment}</p>
-              </div>
-            </div>
-
-            <p className="text-[10px] text-blue-700/80 italic pt-1">
-              * Note: The AI analysis serves as a preliminary triage indicator to aid the extension officer in formulating your final treatment plan.
-            </p>
-          </div>
+          )
         )}
       </div>
     </DashboardLayout>

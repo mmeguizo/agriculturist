@@ -116,10 +116,9 @@ function CaseReviewContent() {
       if (loadedIncident) setIncident(loadedIncident);
       setPestEntries(pestLocal);
 
-      // Pre-fill the recommendation form from the AI analysis when available,
-      // so the agriculturist can accept or edit the draft instead of retyping.
+      // Pre-fill the recommendation form from the AI analysis when available
       const ai = loadedIncident?.aiAnalysis;
-      if (ai) {
+      if (ai && ai.confidence !== "Processing...") {
         setDiagnosis(ai.diseaseName || "");
         setTreatmentPlan(cleanAiTreatment(ai.recommendedTreatment || ""));
         setPreventiveAdvice(ai.preventiveMeasures || "");
@@ -223,6 +222,7 @@ function CaseReviewContent() {
   }
 
   const isResolved = incident.status === "resolved";
+  const isAiProcessing = incident.aiAnalysis?.confidence === "Processing...";
 
   return (
     <DashboardLayout allowedRoles={["agriculturist"]}>
@@ -278,23 +278,38 @@ function CaseReviewContent() {
           </div>
 
           {incident.aiAnalysis && (
-            <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-4 space-y-2">
-              <div className="flex items-center gap-2 text-blue-900">
-                <Sparkles className="w-5 h-5 text-blue-600" />
-                <h3 className="font-bold text-sm">Gemini AI Preliminary Scan</h3>
-                <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
-                  Confidence: {incident.aiAnalysis.confidence}
-                </span>
+            isAiProcessing ? (
+              <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2 text-blue-900">
+                  <Sparkles className="w-5 h-5 text-blue-600 animate-spin" />
+                  <h3 className="font-bold text-sm">Gemini AI Preliminary Scan in Progress</h3>
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2.5 py-0.5 rounded-full ml-auto">
+                    Analyzing photos...
+                  </span>
+                </div>
+                <p className="text-xs text-blue-800">
+                  Background plant vision diagnosis is currently analyzing the submitted photos.
+                </p>
               </div>
-              <p className="text-sm text-gray-800">
-                <strong>Identified:</strong> {incident.aiAnalysis.diseaseName}
-              </p>
-              <p className="text-xs text-gray-700">{incident.aiAnalysis.description}</p>
-              <p className="text-xs text-gray-700 whitespace-pre-line">
-                <strong>Suggested treatment:</strong>{"\n"}
-                {incident.aiAnalysis.recommendedTreatment}
-              </p>
-            </div>
+            ) : (
+              <div className="bg-blue-50/60 border border-blue-200 rounded-lg p-4 space-y-2">
+                <div className="flex items-center gap-2 text-blue-900">
+                  <Sparkles className="w-5 h-5 text-blue-600" />
+                  <h3 className="font-bold text-sm">Gemini AI Preliminary Scan</h3>
+                  <span className="text-[11px] font-semibold text-blue-700 bg-blue-100 px-2 py-0.5 rounded-full">
+                    Confidence: {incident.aiAnalysis.confidence}
+                  </span>
+                </div>
+                <p className="text-sm text-gray-800">
+                  <strong>Identified:</strong> {incident.aiAnalysis.diseaseName}
+                </p>
+                <p className="text-xs text-gray-700">{incident.aiAnalysis.description}</p>
+                <p className="text-xs text-gray-700 whitespace-pre-line">
+                  <strong>Suggested treatment:</strong>{"\n"}
+                  {incident.aiAnalysis.recommendedTreatment}
+                </p>
+              </div>
+            )
           )}
         </div>
 
@@ -328,7 +343,7 @@ function CaseReviewContent() {
           <form onSubmit={handleSubmit} className="card border-2 border-blue-100 space-y-4">
             <h2 className="font-bold text-gray-900">Submit Official Recommendation</h2>
 
-            {incident.aiAnalysis && (
+            {incident.aiAnalysis && !isAiProcessing && (
               <div>
                 <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
                   AI Confidence Level

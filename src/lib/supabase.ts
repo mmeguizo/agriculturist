@@ -24,13 +24,15 @@ export function getSupabaseClient(): SupabaseClient | null {
 }
 
 /**
- * Upload a base64 data-URL image to Supabase Storage and return its public URL.
+ * Upload an image (base64 data-URL or File/Blob) to Supabase Storage and return its public URL.
  * Firebase Firestore is only used to store the returned URL as text.
+ * Includes a 25-second timeout so stalled network requests fail fast and cleanly.
  */
 export async function uploadImageToSupabase(
   bucket: string,
   path: string,
-  dataUrl: string
+  imageData: string | Blob,
+  timeoutMs = 25000
 ): Promise<string> {
   const supabase = getSupabaseClient();
   if (!supabase) {
@@ -39,22 +41,51 @@ export async function uploadImageToSupabase(
     );
   }
 
-  const response = await fetch(dataUrl);
-  if (!response.ok) {
-    throw new Error("Failed to decode the selected image.");
+  let file: File | Blob;
+  let contentType = "image/jpeg";
+
+  if (typeof imageData === "string") {
+    // Fast data URL extraction without fetch overhead
+    if (imageData.startsWith("data:")) {
+      const match = imageData.match(/^data:([^;]+);base64,(.+)$/);
+      if (match) {
+        contentType = match[1] || "image/jpeg";
+        const binaryString = atob(match[2]);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+          bytes[i] = binaryString.charCodeAt(i);
+        }
+        file = new Blob([bytes], { type: contentType });
+      } else {
+        const response = await fetch(imageData);
+        file = await response.blob();
+        contentType = file.type || "image/jpeg";
+      }
+    } else {
+      const response = await fetch(imageData);
+      file = await response.blob();
+      contentType = file.type || "image/jpeg";
+    }
+  } else {
+    file = imageData;
+    contentType = file.type || "image/jpeg";
   }
 
-  const blob = await response.blob();
-  const contentType = blob.type || "image/jpeg";
-  const file = new File([blob], path.split("/").pop() || "image.jpg", {
-    type: contentType,
-  });
-
-  const { error } = await supabase.storage.from(bucket).upload(path, file, {
+  // Upload with timeout protection
+  const uploadPromise = supabase.storage.from(bucket).upload(path, file, {
     cacheControl: "3600",
     contentType,
-    upsert: false,
+    upsert: true,
   });
+
+  const timeoutPromise = new Promise<{ data: null; error: Error }>((_, reject) =>
+    setTimeout(() => reject(new Error(`Upload timed out after ${timeoutMs / 1000}s`)), timeoutMs)
+  );
+
+  const { error } = (await Promise.race([uploadPromise, timeoutPromise])) as {
+    data: unknown;
+    error: Error | null;
+  };
 
   if (error) {
     throw error;
@@ -65,35 +96,24 @@ export async function uploadImageToSupabase(
 }
 
 /**
- * Supabase signed URLs for private buckets stay valid for this many seconds.
- * 315360000 seconds = 10 years, effectively permanent for this app's needs.
- */
-const SIGNED_URL_EXPIRY_SECONDS = 315360000;
-
-/**
- * Convert a stored Supabase public object URL into a signed URL so the image
- * remains viewable even when the storage bucket is not public. Non-Supabase
- * URLs (for example inline `data:` fallbacks) are returned unchanged.
+ * Normalizes and resolves image URLs for display.
+ * - Public bucket Supabase URLs (`/storage/v1/object/public/`) are kept as-is (HTTP 200).
+ * - Broken `/storage/v1/object/sign/` URLs without active tokens are normalized back to public URLs.
+ * - Inline `data:` fallbacks are returned unchanged.
  */
 export async function resolveSupabaseImageUrl(url: string): Promise<string> {
-  const marker = "/storage/v1/object/public/";
-  const markerIndex = url.indexOf(marker);
-  if (markerIndex === -1) return url;
+  if (!url) return "";
 
-  const rest = url.slice(markerIndex + marker.length).split("?")[0];
-  const slashIndex = rest.indexOf("/");
-  if (slashIndex === -1) return url;
+  // If the URL is already a public Supabase URL, use it directly (no signing needed)
+  if (url.includes("/storage/v1/object/public/")) {
+    return url;
+  }
 
-  const bucket = rest.slice(0, slashIndex);
-  const path = rest.slice(slashIndex + 1);
+  // If it's a signed URL without a valid token parameter, recover it to public
+  if (url.includes("/storage/v1/object/sign/") && !url.includes("token=")) {
+    return url.replace("/storage/v1/object/sign/", "/storage/v1/object/public/");
+  }
 
-  const supabase = getSupabaseClient();
-  if (!supabase) return url;
-
-  const { data, error } = await supabase.storage
-    .from(bucket)
-    .createSignedUrl(path, SIGNED_URL_EXPIRY_SECONDS);
-
-  if (error || !data) return url;
-  return data.signedUrl;
+  // Non-Supabase URLs (e.g. data: URLs) are returned as-is
+  return url;
 }

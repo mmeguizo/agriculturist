@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { X, ChevronLeft, ChevronRight, ZoomIn } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, ZoomIn, ImageOff } from "lucide-react";
 import { useResolvedImageUrls } from "@/lib/use-resolved-images";
 
 interface ImageGalleryProps {
@@ -16,6 +16,14 @@ export default function ImageGallery({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [currentIndex, setCurrentIndex] = useState(0);
   const resolved = useResolvedImageUrls(images);
+
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.currentTarget;
+    // Self-healing: if an old signed Supabase URL errored out, try public URL
+    if (target.src.includes("/storage/v1/object/sign/")) {
+      target.src = target.src.replace("/storage/v1/object/sign/", "/storage/v1/object/public/").split("?")[0];
+    }
+  };
 
   if (!images || images.length === 0) {
     return (
@@ -52,6 +60,7 @@ export default function ImageGallery({
             <img
               src={url}
               alt={`${alt} ${index + 1}`}
+              onError={handleImageError}
               className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
             />
             <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 flex items-center justify-center transition-all">
@@ -102,6 +111,7 @@ export default function ImageGallery({
             <img
               src={resolved[currentIndex]}
               alt={`${alt} ${currentIndex + 1}`}
+              onError={handleImageError}
               className="max-h-[85vh] max-w-[90vw] object-contain rounded-md shadow-2xl"
             />
           </div>

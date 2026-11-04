@@ -25,6 +25,13 @@ import {
 function IncidentThumbs({ images }: { images: string[] }) {
   const resolved = useResolvedImageUrls(images);
 
+  const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
+    const target = e.currentTarget;
+    if (target.src.includes("/storage/v1/object/sign/")) {
+      target.src = target.src.replace("/storage/v1/object/sign/", "/storage/v1/object/public/").split("?")[0];
+    }
+  };
+
   return (
     <div className="grid grid-cols-4 gap-1.5 my-3">
       {resolved.slice(0, 4).map((img, idx) => (
@@ -35,6 +42,7 @@ function IncidentThumbs({ images }: { images: string[] }) {
           <img
             src={img}
             alt="Crop photo"
+            onError={handleImageError}
             className="w-full h-full object-cover"
           />
         </div>
@@ -99,7 +107,6 @@ export default function FarmerDashboard() {
       queueMicrotask(() => setLoading(false));
     }
 
-    // Cross-tab demo updates.
     const handleStorage = (e: StorageEvent) => {
       if (e.key === "agricare_incidents") {
         const localIncidents: Incident[] = JSON.parse(
@@ -125,57 +132,65 @@ export default function FarmerDashboard() {
   return (
     <DashboardLayout allowedRoles={["farmer"]}>
       <div className="space-y-6">
-        {/* Welcome Header */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-gradient-to-r from-green-700 to-emerald-800 text-white p-6 rounded-2xl shadow-sm">
-          <div>
-            <span className="text-green-200 text-xs font-semibold uppercase tracking-wider">
-              Farmer Reporting Portal
-            </span>
-            <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight mt-1">
-              Kamusta, {userProfile?.fullName || "Ka-Agri"}!
-            </h1>
-            <p className="text-sm text-green-100 mt-1 max-w-xl">
-              Report crop pests or symptoms, receive rapid AI diagnoses, and get official recommendations from extension agriculturists.
-            </p>
+        {/* Welcome Banner */}
+        <div className="card bg-linear-to-r from-green-700 to-emerald-600 text-white p-6 sm:p-8 shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <span className="text-green-200 text-xs font-bold uppercase tracking-wider">
+                Farmer Portal
+              </span>
+              <h1 className="text-2xl sm:text-3xl font-extrabold mt-1">
+                Welcome back, {userProfile?.fullName || "Farmer"}!
+              </h1>
+              <p className="text-green-100 text-sm mt-1 max-w-xl">
+                Have you observed unusual pests or disease symptoms in your crops? Take clear photos and submit a report for fast diagnostics.
+              </p>
+            </div>
+            <Link
+              href="/farmer/report"
+              className="btn-accent inline-flex items-center gap-2 whitespace-nowrap self-start sm:self-auto text-sm px-5 py-3 shadow-lg hover:scale-105 transition-transform"
+            >
+              <PlusCircle className="w-5 h-5" />
+              Report Incident
+            </Link>
           </div>
-          <Link
-            href="/farmer/report"
-            className="btn-primary bg-white text-green-800 hover:bg-green-50 shadow-md font-bold px-5 py-3 text-sm shrink-0"
-          >
-            <PlusCircle className="w-5 h-5 text-green-700" />
-            Report New Incident
-          </Link>
         </div>
 
         {/* Stats Row */}
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div className="card flex items-center gap-4">
-            <div className="p-3 bg-green-100 text-green-700 rounded-xl">
+          <div className="card border-l-4 border-l-blue-500 flex items-center gap-4">
+            <div className="p-3 bg-blue-50 text-blue-600 rounded-lg">
               <FileText className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Total Reports</p>
-              <p className="text-2xl font-extrabold text-gray-900">{totalCount}</p>
+              <div className="text-2xl font-black text-gray-900">{totalCount}</div>
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                Total Filed Reports
+              </div>
             </div>
           </div>
 
-          <div className="card flex items-center gap-4">
-            <div className="p-3 bg-amber-100 text-amber-700 rounded-xl">
+          <div className="card border-l-4 border-l-amber-500 flex items-center gap-4">
+            <div className="p-3 bg-amber-50 text-amber-600 rounded-lg">
               <Clock className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Pending Review</p>
-              <p className="text-2xl font-extrabold text-amber-700">{pendingCount}</p>
+              <div className="text-2xl font-black text-gray-900">{pendingCount}</div>
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                Awaiting Review
+              </div>
             </div>
           </div>
 
-          <div className="card flex items-center gap-4">
-            <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl">
+          <div className="card border-l-4 border-l-green-600 flex items-center gap-4">
+            <div className="p-3 bg-green-50 text-green-700 rounded-lg">
               <CheckCircle2 className="w-6 h-6" />
             </div>
             <div>
-              <p className="text-xs font-semibold text-gray-500 uppercase tracking-wider">Resolved / Advised</p>
-              <p className="text-2xl font-extrabold text-emerald-700">{resolvedCount}</p>
+              <div className="text-2xl font-black text-gray-900">{resolvedCount}</div>
+              <div className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+                Resolved with Prescription
+              </div>
             </div>
           </div>
         </div>
@@ -238,13 +253,21 @@ export default function FarmerDashboard() {
                     {/* AI Diagnosis Snippet */}
                     {incident.aiAnalysis && (
                       <div className="bg-blue-50/80 border border-blue-100 rounded-lg p-2.5 my-2 flex items-start gap-2 text-xs text-blue-900">
-                        <Sparkles className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                        <Sparkles
+                          className={`w-4 h-4 text-blue-600 shrink-0 mt-0.5 ${
+                            incident.aiAnalysis.confidence === "Processing..."
+                              ? "animate-spin"
+                              : ""
+                          }`}
+                        />
                         <div>
                           <span className="font-bold">AI Diagnosis: </span>
                           <span>{incident.aiAnalysis.diseaseName}</span>
-                          <span className="ml-1 text-[10px] text-blue-600 font-semibold">
-                            ({incident.aiAnalysis.severity} Severity)
-                          </span>
+                          {incident.aiAnalysis.confidence !== "Processing..." && (
+                            <span className="ml-1 text-[10px] text-blue-600 font-semibold">
+                              ({incident.aiAnalysis.severity} Severity)
+                            </span>
+                          )}
                         </div>
                       </div>
                     )}
@@ -253,21 +276,22 @@ export default function FarmerDashboard() {
                   <div className="pt-3 border-t border-gray-100 flex items-center justify-between text-xs text-gray-500 mt-2">
                     <div className="flex items-center gap-3">
                       <span className="flex items-center gap-1">
-                        <Calendar className="w-3.5 h-3.5" />
+                        <Calendar className="w-3.5 h-3.5 text-gray-400" />
                         {new Date(incident.createdAt).toLocaleDateString([], {
                           month: "short",
                           day: "numeric",
+                          year: "numeric",
                         })}
                       </span>
                       {incident.location && (
-                        <span className="flex items-center gap-1 line-clamp-1 max-w-[120px]">
-                          <MapPin className="w-3.5 h-3.5 shrink-0" />
-                          {incident.location}
+                        <span className="flex items-center gap-1">
+                          <MapPin className="w-3.5 h-3.5 text-gray-400" />
+                          {incident.location.split(",")[0]}
                         </span>
                       )}
                     </div>
-                    <span className="font-bold text-green-700 flex items-center gap-0.5 group-hover:translate-x-0.5 transition-transform">
-                      View Details <ArrowRight className="w-3.5 h-3.5" />
+                    <span className="font-bold text-green-700 group-hover:translate-x-1 transition-transform inline-flex items-center gap-0.5">
+                      Details <ArrowRight className="w-3.5 h-3.5" />
                     </span>
                   </div>
                 </Link>

@@ -10,13 +10,13 @@ import { Incident, AIAnalysisResult } from "@/lib/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ImageUploader from "@/components/ui/ImageUploader";
 import {
-  Leaf,
   MapPin,
   Send,
   Sparkles,
-  AlertCircle,
-  HelpCircle,
   LocateFixed,
+  CloudUpload,
+  CheckCircle2,
+  Loader2,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -43,10 +43,10 @@ export default function ReportIncidentPage() {
   const [location, setLocation] = useState(userProfile?.farmLocation || "");
   const [images, setImages] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [submitStep, setSubmitStep] = useState<"uploading" | "saving" | "redirecting">("uploading");
   const [locating, setLocating] = useState(false);
 
-  // If the browser restores this page from the back/forward cache, clear the
-  // form so stale images and details are not shown again.
+  // If the browser restores this page from the back/forward cache, clear the form
   useEffect(() => {
     const onPageShow = (event: PageTransitionEvent) => {
       if (event.persisted) {
@@ -55,6 +55,7 @@ export default function ReportIncidentPage() {
         setDescription("");
         setLocation(userProfile?.farmLocation || "");
         setImages([]);
+        setSubmitting(false);
       }
     };
     window.addEventListener("pageshow", onPageShow);
@@ -84,7 +85,7 @@ export default function ReportIncidentPage() {
         toast.success("GPS Coordinates detected!");
         setLocating(false);
       },
-      (err) => {
+      () => {
         toast.error("Could not obtain location. Please enter your barangay manually.");
         setLocating(false);
       }
@@ -105,67 +106,39 @@ export default function ReportIncidentPage() {
     }
 
     setSubmitting(true);
+    setSubmitStep("uploading");
     const incidentId = uuidv4();
     const finalCrop = cropType === "Other Crops" ? customCrop : cropType;
 
     try {
-      // 1. Call Gemini AI Analysis API
-      let aiResult: AIAnalysisResult | null = null;
-      try {
-        const aiResponse = await fetch("/api/analyze", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            images: images.slice(0, 4), // pass up to 4 base64 images
-            cropType: finalCrop,
-            description,
-          }),
-        });
-        if (aiResponse.ok) {
-          const data = await aiResponse.json();
-          aiResult = {
-            diseaseName: data.diseaseName,
-            severity: data.severity,
-            description: data.description,
-            recommendedTreatment: data.recommendedTreatment,
-            preventiveMeasures: data.preventiveMeasures,
-            confidence: data.confidence,
-            analyzedAt: new Date().toISOString(),
-          };
-        }
-      } catch (aiErr) {
-        console.warn("AI scan failed or timed out:", aiErr);
-      }
-
-      if (!aiResult) {
-        aiResult = {
-          diseaseName: "Under Review by Agriculturist",
-          severity: "Moderate",
-          description: "Visual analysis pending extension worker examination.",
-          recommendedTreatment: "Awaiting verified treatment instructions.",
-          preventiveMeasures: "Maintain field sanitation.",
-          confidence: "Low",
-          analyzedAt: new Date().toISOString(),
-        };
-      }
-
-      // 2. Upload images to Supabase Storage and keep the returned URLs as text
-      // in Firestore (Firebase is used only for text/data). If Supabase is not
-      // configured or the upload fails, preserve the data URL as a fallback.
-      const downloadUrls: string[] = [];
-      for (let i = 0; i < images.length; i++) {
+      // 1. Upload all evidence photos in PARALLEL to Supabase Storage
+      const uploadPromises = images.map(async (imageData, index) => {
         try {
-          const url = await uploadImageToSupabase(
+          return await uploadImageToSupabase(
             supabaseBucket,
-            `${incidentId}/img_${i}.jpg`,
-            images[i]
+            `${incidentId}/img_${index}.jpg`,
+            imageData
           );
-          downloadUrls.push(url);
         } catch (storageErr) {
-          console.warn("Supabase upload failed, preserving inline image:", storageErr);
-          downloadUrls.push(images[i]);
+          console.warn(`Supabase upload failed for photo ${index}, keeping inline:`, storageErr);
+          return imageData;
         }
-      }
+      });
+
+      const downloadUrls = await Promise.all(uploadPromises);
+
+      // 2. Immediately create Incident with "Pending AI Analysis" status
+      setSubmitStep("saving");
+
+      const initialAiResult: AIAnalysisResult = {
+        diseaseName: "AI Diagnosis in Progress...",
+        severity: "Pending",
+        description: "Gemini Vision AI is analyzing your uploaded photos. This diagnosis card will update automatically.",
+        recommendedTreatment: "Treatment recommendations will be populated shortly.",
+        preventiveMeasures: "Analysis in progress.",
+        confidence: "Processing...",
+        analyzedAt: new Date().toISOString(),
+      };
 
       const newIncident: Incident = {
         id: incidentId,
@@ -180,30 +153,30 @@ export default function ReportIncidentPage() {
         status: "pending",
         createdAt: new Date().toISOString(),
         resolvedAt: null,
-        aiAnalysis: aiResult,
+        aiAnalysis: initialAiResult,
       };
 
-      // 3. Save to Firestore
+      // Save to Firestore
       try {
         await setDoc(doc(db, "incidents", incidentId), newIncident);
       } catch (dbErr) {
         console.warn("Could not write directly to Firestore:", dbErr);
       }
 
-      // 4. Save to Local Storage for demo persistence
+      // Save to Local Storage for instant demo access
       const allIncidents: Incident[] = JSON.parse(
         localStorage.getItem("agricare_incidents") || "[]"
       );
       allIncidents.unshift(newIncident);
       localStorage.setItem("agricare_incidents", JSON.stringify(allIncidents));
 
-      // 5. Notify Agriculturists
+      // Notify Agriculturists
       const notifId = uuidv4();
       const agriculturistNotif = {
         id: notifId,
         recipientId: "all-agriculturists",
         title: `New Incident Report: ${finalCrop}`,
-        message: `${activeUserName} filed a new incident in ${location}. AI flagged ${aiResult.diseaseName}.`,
+        message: `${activeUserName} filed a new incident in ${location}. Photos queued for review.`,
         link: `/agriculturist/incident/${incidentId}`,
         read: false,
         createdAt: new Date().toISOString(),
@@ -214,22 +187,83 @@ export default function ReportIncidentPage() {
       existingNotifs.unshift(agriculturistNotif);
       localStorage.setItem("agricare_notifications", JSON.stringify(existingNotifs));
 
-      // Clear the form so back/forward navigation does not restore the
-      // previously submitted images and details.
+      // 3. Kick off Gemini AI Analysis non-blockingly in the background!
+      // This ensures the farmer is never stuck waiting 3-5 minutes on this form.
+      const imagesForAi = images.slice(0, 4);
+      (async () => {
+        try {
+          const aiResponse = await fetch("/api/analyze", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              images: imagesForAi,
+              cropType: finalCrop,
+              description,
+            }),
+          });
+          if (aiResponse.ok) {
+            const data = await aiResponse.json();
+            const updatedAiResult: AIAnalysisResult = {
+              diseaseName: data.diseaseName || "Analysis Completed",
+              severity: data.severity || "Moderate",
+              description: data.description || "Analysis completed.",
+              recommendedTreatment: data.recommendedTreatment || "Consult municipal extension officer.",
+              preventiveMeasures: data.preventiveMeasures || "Maintain field hygiene.",
+              confidence: data.confidence || "Medium",
+              analyzedAt: new Date().toISOString(),
+            };
+
+            // Update Firestore
+            try {
+              await setDoc(
+                doc(db, "incidents", incidentId),
+                { aiAnalysis: updatedAiResult },
+                { merge: true }
+              );
+            } catch (err) {
+              console.warn("Background AI Firestore update error:", err);
+            }
+
+            // Update Local Storage
+            try {
+              const currentIncidents: Incident[] = JSON.parse(
+                localStorage.getItem("agricare_incidents") || "[]"
+              );
+              const target = currentIncidents.find((i) => i.id === incidentId);
+              if (target) {
+                target.aiAnalysis = updatedAiResult;
+                localStorage.setItem(
+                  "agricare_incidents",
+                  JSON.stringify(currentIncidents)
+                );
+                window.dispatchEvent(new Event("storage"));
+              }
+            } catch (err) {
+              console.warn("Background AI localStorage update error:", err);
+            }
+          }
+        } catch (bgErr) {
+          console.warn("Background AI request error:", bgErr);
+        }
+      })();
+
+      // 4. Redirect the farmer immediately!
+      setSubmitStep("redirecting");
+      toast.success("Report submitted successfully! AI scan queued.");
+
+      // Clear the form
       setCropType(CROP_OPTIONS[0]);
       setCustomCrop("");
       setDescription("");
       setLocation(userProfile?.farmLocation || "");
       setImages([]);
 
-      toast.success("Incident submitted! AI scan finished and queued for review.");
       router.push(`/farmer/incident/${incidentId}`);
     } catch (err: unknown) {
       console.error("Submission failed:", err);
       toast.error(
         err instanceof Error ? err.message : "Failed to submit incident."
       );
-    } finally {
       setSubmitting(false);
     }
   };
@@ -246,7 +280,41 @@ export default function ReportIncidentPage() {
           </p>
         </div>
 
-        <form onSubmit={handleSubmit} autoComplete="off" className="card space-y-5 shadow-sm">
+        <form onSubmit={handleSubmit} autoComplete="off" className="card space-y-5 shadow-sm relative">
+          {/* Submission Modal Overlay */}
+          {submitting && (
+            <div className="absolute inset-0 bg-white/90 backdrop-blur-xs rounded-xl z-30 flex flex-col items-center justify-center p-6 text-center shadow-lg">
+              <div className="w-14 h-14 bg-green-100 rounded-full flex items-center justify-center text-green-700 mb-4 animate-bounce">
+                {submitStep === "uploading" && <CloudUpload className="w-7 h-7" />}
+                {submitStep === "saving" && <Loader2 className="w-7 h-7 animate-spin" />}
+                {submitStep === "redirecting" && <CheckCircle2 className="w-7 h-7 text-green-600" />}
+              </div>
+              <h3 className="text-lg font-bold text-gray-900 mb-1">
+                {submitStep === "uploading" && "Uploading Evidence Photos..."}
+                {submitStep === "saving" && "Recording Incident Report..."}
+                {submitStep === "redirecting" && "Report Submitted! Redirecting..."}
+              </h3>
+              <p className="text-xs text-gray-500 max-w-xs">
+                {submitStep === "uploading" && "Uploading compressed photos securely to cloud storage in parallel."}
+                {submitStep === "saving" && "Submitting report with pending status. AI analysis will run in the background."}
+                {submitStep === "redirecting" && "Taking you to your incident summary page..."}
+              </p>
+              <div className="w-48 bg-gray-200 h-1.5 rounded-full overflow-hidden mt-4">
+                <div
+                  className="bg-green-600 h-full transition-all duration-300"
+                  style={{
+                    width:
+                      submitStep === "uploading"
+                        ? "45%"
+                        : submitStep === "saving"
+                        ? "85%"
+                        : "100%",
+                  }}
+                />
+              </div>
+            </div>
+          )}
+
           {/* Crop Type Selection */}
           <div>
             <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1.5">
@@ -342,9 +410,9 @@ export default function ReportIncidentPage() {
           <div className="p-3.5 bg-blue-50/80 border border-blue-200 rounded-xl flex items-start gap-3 text-xs text-blue-900">
             <Sparkles className="w-5 h-5 text-blue-600 shrink-0 mt-0.5" />
             <div>
-              <p className="font-bold">Automated Gemini Plant Vision Scan</p>
+              <p className="font-bold">Fast Submissions & Background Plant Vision Scan</p>
               <p className="text-blue-800/90 mt-0.5">
-                Upon submitting, our AI will automatically identify the pest/disease symptoms across your 4+ photos to draft an immediate preliminary assessment for the agriculturist.
+                Your report will be accepted immediately with pending status. Our plant vision AI and municipal agriculturist will review the evidence without keeping you waiting on this page.
               </p>
             </div>
           </div>
@@ -358,8 +426,8 @@ export default function ReportIncidentPage() {
             >
               {submitting ? (
                 <>
-                  <Sparkles className="w-5 h-5 animate-spin" />
-                  Running AI Analysis & Submitting Report...
+                  <Loader2 className="w-5 h-5 animate-spin" />
+                  Submitting Report...
                 </>
               ) : (
                 <>
