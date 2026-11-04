@@ -34,13 +34,17 @@ import {
 
 function handleImageError(e: React.SyntheticEvent<HTMLImageElement, Event>) {
   const target = e.currentTarget;
+  if (target.dataset.errorHandled) return;
+  target.dataset.errorHandled = "true";
+
   if (target.src.includes("/storage/v1/object/sign/")) {
     target.src = target.src.replace("/storage/v1/object/sign/", "/storage/v1/object/public/").split("?")[0];
   }
 }
 
 function IncidentThumbSingle({ url, count }: { url?: string; count: number }) {
-  const resolved = useResolvedImageUrls(url ? [url] : []);
+  const images = useMemo(() => (url ? [url] : []), [url]);
+  const resolved = useResolvedImageUrls(images);
   const displayUrl = resolved[0];
 
   if (!displayUrl) {

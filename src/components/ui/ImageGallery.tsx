@@ -19,6 +19,9 @@ export default function ImageGallery({
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
     const target = e.currentTarget;
+    if (target.dataset.errorHandled) return;
+    target.dataset.errorHandled = "true";
+
     // Self-healing: if an old signed Supabase URL errored out, try public URL
     if (target.src.includes("/storage/v1/object/sign/")) {
       target.src = target.src.replace("/storage/v1/object/sign/", "/storage/v1/object/public/").split("?")[0];
