@@ -73,8 +73,11 @@ function IncidentThumbSingle({ url, count }: { url?: string; count: number }) {
 }
 
 export default function AgriculturistQueuePage() {
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [incidents, setIncidents] = useState<Incident[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localStore.incidents.getAll();
+  });
+  const [loading, setLoading] = useState(() => incidents.length === 0);
 
   // Filters, search, sort, view mode, and pagination
   const [filter, setFilter] = useState<QueueFilter>("pending");
@@ -85,11 +88,16 @@ export default function AgriculturistQueuePage() {
   const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
-    setLoading(true);
     const local = localStore.incidents.getAll();
-
     const sortDesc = (list: Incident[]) =>
       [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+
+    if (local.length > 0) {
+      setIncidents(sortDesc(local));
+      setLoading(false);
+    } else {
+      setLoading(true);
+    }
 
     let unsub: (() => void) | null = null;
     try {

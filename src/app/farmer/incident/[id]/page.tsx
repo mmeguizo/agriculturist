@@ -59,7 +59,7 @@ function IncidentDetailContent() {
     );
     return allRecs.find((r) => r.incidentId === id) || null;
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !incident);
 
   const [analyzing, setAnalyzing] = useState(false);
 
@@ -138,6 +138,15 @@ function IncidentDetailContent() {
       const recLocal = allRecs.find((r) => r.incidentId === id);
       return { foundLocal, recLocal };
     };
+
+    const { foundLocal, recLocal } = readLocal();
+    if (foundLocal) {
+      setIncident(foundLocal);
+      setLoading(false);
+    }
+    if (recLocal) {
+      setRecommendation(recLocal);
+    }
 
     // Subscribe to Firestore for realtime updates
     const unsubs: (() => void)[] = [];

@@ -22,8 +22,11 @@ const EMPTY_FORM = {
 };
 
 export default function AdminPestsPage() {
-  const [entries, setEntries] = useState<PestEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [entries, setEntries] = useState<PestEntry[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localStore.pests.getAll();
+  });
+  const [loading, setLoading] = useState(() => entries.length === 0);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
@@ -32,6 +35,10 @@ export default function AdminPestsPage() {
   useEffect(() => {
     const loadEntries = async () => {
       const local = localStore.pests.getAll();
+      if (local.length > 0) {
+        setEntries(local);
+        setLoading(false);
+      }
       try {
         const snap = await getDocs(collection(db, "pest_database"));
         if (!snap.empty) {

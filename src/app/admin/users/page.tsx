@@ -32,8 +32,11 @@ const ROLE_LABEL: Record<UserRole, string> = {
 };
 
 export default function AdminUsersPage() {
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localStore.users.getAll();
+  });
+  const [loading, setLoading] = useState(() => users.length === 0);
   const [filter, setFilter] = useState<StatusFilter>("pending");
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -52,6 +55,7 @@ export default function AdminUsersPage() {
   useEffect(() => {
     const loadUsers = async () => {
       const localUsers = localStore.users.getAll();
+      if (localUsers.length > 0) { setUsers(localUsers); setLoading(false); }
       try {
         const snap = await getDocs(collection(db, "users"));
         if (!snap.empty) {

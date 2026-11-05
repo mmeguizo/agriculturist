@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="skyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#b8e1fc"/>
+      <stop offset="100%" stop-color="#e2f1fc"/>
+    </linearGradient>
+    <linearGradient id="paddyGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#55883b"/>
+      <stop offset="100%" stop-color="#345822"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="220" fill="url(#skyGrad)"/>
+  <rect y="220" width="800" height="380" fill="url(#paddyGrad)"/>
+
+  <!-- Mountain silhouette in background -->
+  <path d="M 0,220 L 150,140 L 320,190 L 520,120 L 700,180 L 800,150 L 800,220 Z" fill="#7ba384" opacity="0.6"/>
+
+  <!-- Field Discoloration Patches (Stunting and Foliage Burn) -->
+  <ellipse cx="380" cy="380" rx="140" ry="40" fill="#a48a43" opacity="0.75"/>
+  <ellipse cx="400" cy="390" rx="90" ry="25" fill="#825e24" opacity="0.8"/>
+  <ellipse cx="580" cy="460" rx="110" ry="35" fill="#a48a43" opacity="0.7"/>
+
+  <g transform="translate(30, 30)">
+    <rect width="260" height="48" rx="8" fill="#000000" opacity="0.6"/>
+    <circle cx="25" cy="24" r="8" fill="#10b981"/>
+    <text x="45" y="24" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="bold">PHOTO 4: CANOPY / PLOT VIEW</text>
+    <text x="45" y="40" fill="#cbd5e1" font-family="system-ui, -apple-system, sans-serif" font-size="11">Field Patch Chlorosis Pattern</text>
+  </g>
+</svg>

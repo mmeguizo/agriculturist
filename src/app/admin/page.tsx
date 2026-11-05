@@ -22,20 +22,35 @@ import {
 } from "lucide-react";
 
 export default function AdminDashboard() {
-  const [users, setUsers] = useState<UserProfile[]>([]);
-  const [incidents, setIncidents] = useState<Incident[]>([]);
-  const [advisories, setAdvisories] = useState<Advisory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [users, setUsers] = useState<UserProfile[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localStore.users.getAll();
+  });
+  const [incidents, setIncidents] = useState<Incident[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localStore.incidents.getAll();
+  });
+  const [advisories, setAdvisories] = useState<Advisory[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localStore.advisories.getAll();
+  });
+  const [loading, setLoading] = useState(() => users.length === 0 && incidents.length === 0);
   const [reportStart, setReportStart] = useState("");
   const [reportEnd, setReportEnd] = useState("");
 
   useEffect(() => {
     const fetchData = async () => {
-      setLoading(true);
-
       const localUsers = localStore.users.getAll();
       const localIncidents = localStore.incidents.getAll();
       const localAdvisories = localStore.advisories.getAll();
+      if (localUsers.length > 0 || localIncidents.length > 0) {
+        setUsers(localUsers);
+        setIncidents(localIncidents);
+        setAdvisories(localAdvisories);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
 
       try {
         const [usersSnap, incidentsSnap, advisoriesSnap] = await Promise.all([

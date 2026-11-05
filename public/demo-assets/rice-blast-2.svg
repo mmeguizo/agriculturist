@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600" width="800" height="600">
+  <defs>
+    <linearGradient id="bg2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#3a5a2f"/>
+      <stop offset="100%" stop-color="#1e3419"/>
+    </linearGradient>
+    <linearGradient id="stemGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#84b058"/>
+      <stop offset="50%" stop-color="#5a8c2f"/>
+      <stop offset="100%" stop-color="#3e6320"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="800" height="600" fill="url(#bg2)"/>
+
+  <!-- Stem & Leaf Collar Junction -->
+  <path d="M 370,600 L 390,0 L 430,0 L 410,600 Z" fill="url(#stemGrad)"/>
+  
+  <!-- Spreading Foliage -->
+  <path d="M 400,280 C 250,220 100,280 50,420 C 130,340 320,310 400,280 Z" fill="#6ba33b"/>
+  <path d="M 405,275 C 550,200 700,250 750,380 C 670,300 500,290 405,275 Z" fill="#588e2c"/>
+
+  <!-- Collar Rot Necrosis -->
+  <path d="M 380,240 Q 420,220 425,270 Q 395,310 380,240 Z" fill="#4a220e"/>
+  <circle cx="405" cy="260" r="18" fill="#351809" opacity="0.9"/>
+  <ellipse cx="405" cy="260" rx="30" ry="12" fill="#7a421b" opacity="0.7"/>
+
+  <!-- Specimen Photo Label Badge -->
+  <g transform="translate(30, 30)">
+    <rect width="260" height="48" rx="8" fill="#000000" opacity="0.6"/>
+    <circle cx="25" cy="24" r="8" fill="#f59e0b"/>
+    <text x="45" y="24" fill="#ffffff" font-family="system-ui, -apple-system, sans-serif" font-size="13" font-weight="bold">PHOTO 2: COLLAR ROT ROTATION</text>
+    <text x="45" y="40" fill="#cbd5e1" font-family="system-ui, -apple-system, sans-serif" font-size="11">Foliage Junction Necrosis</text>
+  </g>
+</svg>

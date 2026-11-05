@@ -107,7 +107,7 @@ export default function FarmerDashboard() {
       .filter((inc) => inc.farmerId === activeUserId)
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   });
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => incidents.length === 0);
 
   // Filters, search, sort, and view controls
   const [viewMode, setViewMode] = useState<"table" | "cards">("table");
@@ -123,6 +123,16 @@ export default function FarmerDashboard() {
     const sortDesc = (list: Incident[]) =>
       [...list].sort((a, b) => b.createdAt.localeCompare(a.createdAt));
 
+    // Instant local paint so user never waits for Firestore network roundtrip
+    const localIncidents: Incident[] = JSON.parse(
+      localStorage.getItem("agricare_incidents") || "[]"
+    );
+    const userLocal = localIncidents.filter((inc) => !inc.farmerId || inc.farmerId === activeUserId);
+    if (userLocal.length > 0) {
+      setIncidents(sortDesc(userLocal));
+      setLoading(false);
+    }
+
     const unsubs: (() => void)[] = [];
     try {
       unsubs.push(
@@ -137,6 +147,13 @@ export default function FarmerDashboard() {
                 (d) => ({ id: d.id, ...d.data() } as Incident)
               );
               setIncidents(sortDesc(list));
+            } else {
+              const localIncidents: Incident[] = JSON.parse(
+                localStorage.getItem("agricare_incidents") || "[]"
+              );
+              setIncidents(
+                sortDesc(localIncidents.filter((inc) => inc.farmerId === activeUserId))
+              );
             }
             setLoading(false);
           },

@@ -20,8 +20,11 @@ const SEVERITY_STYLE: Record<Severity, string> = {
 
 export default function AdminAdvisoriesPage() {
   const { userProfile } = useAuth();
-  const [advisories, setAdvisories] = useState<Advisory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [advisories, setAdvisories] = useState<Advisory[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localStore.advisories.getAll();
+  });
+  const [loading, setLoading] = useState(() => advisories.length === 0);
   const [showForm, setShowForm] = useState(false);
   const [saving, setSaving] = useState(false);
   const [form, setForm] = useState({
@@ -34,6 +37,10 @@ export default function AdminAdvisoriesPage() {
   useEffect(() => {
     const loadAdvisories = async () => {
       const local = localStore.advisories.getAll();
+      if (local.length > 0) {
+        setAdvisories(local);
+        setLoading(false);
+      }
       try {
         const snap = await getDocs(collection(db, "advisories"));
         if (!snap.empty) {

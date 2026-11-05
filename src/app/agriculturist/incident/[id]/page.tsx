@@ -68,15 +68,24 @@ function CaseReviewContent() {
   const id = params?.id as string;
   const { userProfile } = useAuth();
 
-  const [incident, setIncident] = useState<Incident | null>(null);
-  const [existingRec, setExistingRec] = useState<Recommendation | null>(null);
-  const [pestEntries, setPestEntries] = useState<PestEntry[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [incident, setIncident] = useState<Incident | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStore.incidents.getAll().find((i) => i.id === id) || null;
+  });
+  const [existingRec, setExistingRec] = useState<Recommendation | null>(() => {
+    if (typeof window === "undefined") return null;
+    return localStore.recommendations.getAll().find((r) => r.incidentId === id) || null;
+  });
+  const [pestEntries, setPestEntries] = useState<PestEntry[]>(() => {
+    if (typeof window === "undefined") return [];
+    return localStore.pests.getAll();
+  });
+  const [loading, setLoading] = useState(() => !incident);
   const [saving, setSaving] = useState(false);
 
-  const [diagnosis, setDiagnosis] = useState("");
-  const [treatmentPlan, setTreatmentPlan] = useState("");
-  const [preventiveAdvice, setPreventiveAdvice] = useState("");
+  const [diagnosis, setDiagnosis] = useState(() => existingRec?.identifiedPest || incident?.aiAnalysis?.diseaseName || "");
+  const [treatmentPlan, setTreatmentPlan] = useState(() => existingRec?.treatmentPlan || cleanAiTreatment(incident?.aiAnalysis?.recommendedTreatment || ""));
+  const [preventiveAdvice, setPreventiveAdvice] = useState(() => existingRec?.preventiveMeasures || incident?.aiAnalysis?.preventiveMeasures || "");
   const [purchaseRecommendation, setPurchaseRecommendation] = useState("");
   const [basedOnAI, setBasedOnAI] = useState(true);
   const [reanalyzing, setReanalyzing] = useState(false);
@@ -127,12 +136,22 @@ function CaseReviewContent() {
     if (!id) return;
 
     const load = async () => {
-      setLoading(true);
-
       const localIncident = localStore.incidents.getAll().find((i) => i.id === id);
       const localRec = localStore.recommendations.getAll().find((r) => r.incidentId === id);
       let pestLocal = localStore.pests.getAll();
       let loadedIncident: Incident | null = localIncident || null;
+
+      if (localIncident) {
+        setIncident(localIncident);
+        setDiagnosis(localRec?.identifiedPest || localIncident.aiAnalysis?.diseaseName || "");
+        setTreatmentPlan(localRec?.treatmentPlan || cleanAiTreatment(localIncident.aiAnalysis?.recommendedTreatment || ""));
+        setPreventiveAdvice(localRec?.preventiveMeasures || localIncident.aiAnalysis?.preventiveMeasures || "");
+        if (localRec) setExistingRec(localRec);
+        if (pestLocal.length > 0) setPestEntries(pestLocal);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
 
       try {
         const snap = await getDoc(doc(db, "incidents", id));

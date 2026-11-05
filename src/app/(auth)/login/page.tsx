@@ -8,7 +8,7 @@ import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { useAuth } from "@/lib/auth-context";
 import { UserProfile, UserRole } from "@/lib/types";
-import { Leaf, ArrowRight, ShieldAlert, Sparkles, Eye, EyeOff } from "lucide-react";
+import { Leaf, ArrowRight, Eye, EyeOff } from "lucide-react";
 import toast from "react-hot-toast";
 
 export default function LoginPage() {
@@ -135,6 +135,7 @@ export default function LoginPage() {
   };
 
   // Quick Demo Fast-Login Helper for evaluator convenience
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const loginAsDemoRole = (role: UserRole, status: "approved" | "pending" = "approved") => {
     const demoProfiles: Record<UserRole, UserProfile> = {
       admin: {
@@ -252,37 +253,6 @@ export default function LoginPage() {
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
-
-          {/* Quick Demo Role Switcher */}
-          <div className="mt-6 pt-5 border-t border-gray-100">
-            <div className="flex items-center gap-1.5 text-xs font-bold text-gray-500 uppercase tracking-wider mb-2.5">
-              <Sparkles className="w-3.5 h-3.5 text-green-600" />
-              <span>Instant Demo Switcher (1-Click Test)</span>
-            </div>
-            <div className="grid grid-cols-3 gap-2">
-              <button
-                type="button"
-                onClick={() => loginAsDemoRole("farmer", "approved")}
-                className="p-2 bg-green-50 hover:bg-green-100 text-green-800 text-xs font-semibold rounded-lg border border-green-200 text-center transition-colors"
-              >
-                Farmer
-              </button>
-              <button
-                type="button"
-                onClick={() => loginAsDemoRole("agriculturist", "approved")}
-                className="p-2 bg-blue-50 hover:bg-blue-100 text-blue-800 text-xs font-semibold rounded-lg border border-blue-200 text-center transition-colors"
-              >
-                Agriculturist
-              </button>
-              <button
-                type="button"
-                onClick={() => loginAsDemoRole("admin", "approved")}
-                className="p-2 bg-purple-50 hover:bg-purple-100 text-purple-800 text-xs font-semibold rounded-lg border border-purple-200 text-center transition-colors"
-              >
-                Admin
-              </button>
-            </div>
-          </div>
 
           <div className="mt-6 text-center text-sm text-gray-600 border-t border-gray-100 pt-4">
             Don&apos;t have an account yet?{" "}
