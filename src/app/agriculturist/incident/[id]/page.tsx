@@ -83,9 +83,9 @@ function CaseReviewContent() {
   const [loading, setLoading] = useState(() => !incident);
   const [saving, setSaving] = useState(false);
 
-  const [diagnosis, setDiagnosis] = useState(() => existingRec?.identifiedPest || incident?.aiAnalysis?.diseaseName || "");
+  const [diagnosis, setDiagnosis] = useState(() => existingRec?.diagnosis || incident?.aiAnalysis?.diseaseName || "");
   const [treatmentPlan, setTreatmentPlan] = useState(() => existingRec?.treatmentPlan || cleanAiTreatment(incident?.aiAnalysis?.recommendedTreatment || ""));
-  const [preventiveAdvice, setPreventiveAdvice] = useState(() => existingRec?.preventiveMeasures || incident?.aiAnalysis?.preventiveMeasures || "");
+  const [preventiveAdvice, setPreventiveAdvice] = useState(() => existingRec?.preventiveAdvice || incident?.aiAnalysis?.preventiveMeasures || "");
   const [purchaseRecommendation, setPurchaseRecommendation] = useState("");
   const [basedOnAI, setBasedOnAI] = useState(true);
   const [reanalyzing, setReanalyzing] = useState(false);
@@ -143,9 +143,9 @@ function CaseReviewContent() {
 
       if (localIncident) {
         setIncident(localIncident);
-        setDiagnosis(localRec?.identifiedPest || localIncident.aiAnalysis?.diseaseName || "");
+        setDiagnosis(localRec?.diagnosis || localIncident.aiAnalysis?.diseaseName || "");
         setTreatmentPlan(localRec?.treatmentPlan || cleanAiTreatment(localIncident.aiAnalysis?.recommendedTreatment || ""));
-        setPreventiveAdvice(localRec?.preventiveMeasures || localIncident.aiAnalysis?.preventiveMeasures || "");
+        setPreventiveAdvice(localRec?.preventiveAdvice || localIncident.aiAnalysis?.preventiveMeasures || "");
         if (localRec) setExistingRec(localRec);
         if (pestLocal.length > 0) setPestEntries(pestLocal);
         setLoading(false);
