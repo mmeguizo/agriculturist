@@ -21,6 +21,7 @@ import {
   BarChart3,
   Printer,
   Calendar,
+  Package,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -273,7 +274,20 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+          <Link href="/admin/inventory" className="card hover:shadow-md transition-shadow group">
+            <div className="flex items-center justify-between">
+              <div className="p-3 bg-emerald-100 text-emerald-700 rounded-xl">
+                <Package className="w-6 h-6" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-emerald-600 transition-colors" />
+            </div>
+            <h3 className="font-bold text-gray-900 mt-3">Product Inventory</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Add / Recommend chemicals, pesticides &amp; inputs to the catalog.
+            </p>
+          </Link>
+
           <Link href="/admin/outbreak-calendar" className="card hover:shadow-md transition-shadow group">
             <div className="flex items-center justify-between">
               <div className="p-3 bg-purple-100 text-purple-700 rounded-xl">

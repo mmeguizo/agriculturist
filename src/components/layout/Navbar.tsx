@@ -23,6 +23,7 @@ import {
   Sun,
   Moon,
   Calendar,
+  Package,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -58,6 +59,7 @@ export default function Navbar() {
     if (role === "admin") {
       return [
         { href: "/admin", label: "Overview", icon: Home },
+        { href: "/admin/inventory", label: "Product Inventory", icon: Package },
         { href: "/admin/outbreak-calendar", label: "Outbreak Calendar", icon: Calendar },
         { href: "/admin/users", label: "User Approvals", icon: Users },
         { href: "/admin/pests", label: "Pest Database", icon: Database },

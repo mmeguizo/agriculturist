@@ -56,6 +56,43 @@ export interface AIAnalysisResult {
   analyzedAt: string;
 }
 
+export type ProductCategory =
+  | "Fungicide"
+  | "Insecticide"
+  | "Bactericide"
+  | "Molluscicide"
+  | "Rodenticide"
+  | "Biocontrol / Organic"
+  | "Fertilizer / Foliar";
+
+export interface InventoryProduct {
+  id: string;
+  name: string;
+  brandName?: string;
+  category: ProductCategory;
+  activeIngredient?: string;
+  targetPests: string[];
+  targetCrops?: string[];
+  recommendedDosage: string;
+  safetyPeriodDays?: number;
+  description?: string;
+  inStock: boolean;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface RecommendedProductItem {
+  id?: string;
+  productId?: string;
+  name: string;
+  brand?: string;
+  activeIngredient?: string;
+  category: ProductCategory;
+  dosage: string;
+  instructions?: string;
+  isAiSuggested?: boolean;
+}
+
 export interface Recommendation {
   id: string;
   incidentId: string;
@@ -70,6 +107,8 @@ export interface Recommendation {
   confidence?: string;
   // Products/chemicals the agriculturist recommends the farmer buy
   purchaseRecommendation?: string;
+  // Structured chemicals/products list
+  recommendedProducts?: RecommendedProductItem[];
   createdAt: string;
 }
 

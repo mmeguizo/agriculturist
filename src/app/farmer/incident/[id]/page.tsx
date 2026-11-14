@@ -22,6 +22,7 @@ import {
   AlertTriangle,
   Loader2,
   RefreshCw,
+  ShoppingBag,
 } from "lucide-react";
 
 export default function FarmerIncidentDetailPage() {
@@ -346,7 +347,58 @@ function IncidentDetailContent() {
                 </p>
               </div>
 
-              {recommendation.purchaseRecommendation && (
+              {recommendation.recommendedProducts && recommendation.recommendedProducts.length > 0 ? (
+                <div className="bg-white dark:bg-gray-800 p-4 rounded-lg border border-emerald-200 dark:border-gray-700 shadow-xs space-y-3">
+                  <div className="flex items-center gap-2">
+                    <ShoppingBag className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+                    <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 dark:text-emerald-300">
+                      Recommended Products &amp; Chemicals to Buy ({recommendation.recommendedProducts.length})
+                    </span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {recommendation.recommendedProducts.map((prod, idx) => (
+                      <div
+                        key={prod.id || idx}
+                        className="p-3 bg-emerald-50/50 dark:bg-gray-900/60 border border-emerald-200 dark:border-gray-700 rounded-lg text-xs space-y-1.5"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div>
+                            <span className="font-bold text-gray-900 dark:text-gray-100 text-sm block">
+                              {prod.name}
+                            </span>
+                            {prod.brand && (
+                              <span className="text-[11px] text-gray-500 dark:text-gray-400">
+                                Brand / Vendor: {prod.brand}
+                              </span>
+                            )}
+                          </div>
+                          <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 shrink-0">
+                            {prod.category}
+                          </span>
+                        </div>
+                        {prod.activeIngredient && (
+                          <p className="text-[11px] text-gray-600 dark:text-gray-300">
+                            <strong>Active Ingredient:</strong> {prod.activeIngredient}
+                          </p>
+                        )}
+                        {prod.dosage && (
+                          <div className="bg-white dark:bg-gray-800 px-2 py-1 rounded border border-emerald-200 dark:border-gray-700">
+                            <span className="font-semibold text-emerald-800 dark:text-emerald-300">
+                              Dosage:{" "}
+                            </span>
+                            <span className="text-gray-800 dark:text-gray-200 font-medium">{prod.dosage}</span>
+                          </div>
+                        )}
+                        {prod.instructions && (
+                          <p className="text-gray-600 dark:text-gray-300 text-[11px]">
+                            <strong>Instructions:</strong> {prod.instructions}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ) : recommendation.purchaseRecommendation ? (
                 <div className="bg-white p-3.5 rounded-lg border border-emerald-200 shadow-xs">
                   <span className="text-xs font-bold uppercase tracking-wider text-emerald-800 block mb-1">
                     What to Buy
@@ -355,7 +407,7 @@ function IncidentDetailContent() {
                     {recommendation.purchaseRecommendation}
                   </p>
                 </div>
-              )}
+              ) : null}
             </div>
           </div>
         ) : (

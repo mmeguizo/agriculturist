@@ -1,11 +1,13 @@
 import {
   Advisory,
   Incident,
+  InventoryProduct,
   Notification,
   PestEntry,
   Recommendation,
   UserProfile,
 } from "./types";
+import { INITIAL_INVENTORY_PRODUCTS } from "./inventory-seed";
 
 function read<T>(key: string): T[] {
   try {
@@ -93,5 +95,29 @@ export const localStore = {
     setAll: (v: Notification[]) => write("agricare_notifications", v),
     upsert: (n: Notification) =>
       upsert<Notification>("agricare_notifications", n),
+  },
+  inventory: {
+    getAll: (): InventoryProduct[] => {
+      const stored = read<InventoryProduct>("agricare_inventory");
+      if (stored && stored.length > 0) return stored;
+      if (typeof window !== "undefined") {
+        write("agricare_inventory", INITIAL_INVENTORY_PRODUCTS);
+      }
+      return INITIAL_INVENTORY_PRODUCTS;
+    },
+    setAll: (v: InventoryProduct[]) => write("agricare_inventory", v),
+    upsert: (p: InventoryProduct) => {
+      const all = localStore.inventory.getAll();
+      const idx = all.findIndex((x) => x.id === p.id);
+      if (idx >= 0) all[idx] = p;
+      else all.unshift(p);
+      write("agricare_inventory", all);
+      return all;
+    },
+    remove: (id: string) => {
+      const all = localStore.inventory.getAll().filter((x) => x.id !== id);
+      write("agricare_inventory", all);
+      return all;
+    },
   },
 };

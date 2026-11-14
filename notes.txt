@@ -1,21 +1,10 @@
-1.User account: Farmer,Agriculturist,admin.
--Reset password if the user forgot password
+Recommend what to buy should be dropdown -> and can select/selected any chemical/product to be purchase
 
-2. -Must be Visualize Chart Report Chart
-**Outbreak must be Seasonal Visualize chart.
+ - can add new product on the dropdown,
+ - options to have ai auto fill the product as recommendations, so agriculturist just check uncheck any autofilled products
 
-May -Rice blast, bacterial leaf blight, fungal diseases
-June -Rice stem borers, golden apple snails, planthoppers
-July -Rice blast, sheath blight, bacterial leaf blight
-August -Brown planthoppers, armyworms, leaf folders
-September -Rice blast, bacterial diseases,- fungal infections
-October -Stem borers, planthoppers, fruit and root rots
-November- Rats, rice bugs, fungal diseases
-December -Rice blast, rodents, vegetable pests
+ - and on the admin side there is a functions, that says "add/recommend what to buy feature" to add to the product list
 
--monthly outbreak calendar specifically for:
--Rice
--Corn
--Sugarcane
--Vegetables
--All major crops in Negros Occidental
+ - and an inventory list on the admin side that agriculturist can recommend to the farmers
+
+ - and on the Seasonal Pest & Disease Outbreak Visualizer..if selecting  all seasons, wet season, dry season filters can be printed 

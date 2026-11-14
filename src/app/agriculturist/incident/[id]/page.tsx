@@ -14,11 +14,12 @@ import {
 import { db } from "@/lib/firebase";
 import { localStore } from "@/lib/demo-store";
 import { useAuth } from "@/lib/auth-context";
-import { Incident, PestEntry, Recommendation, AIAnalysisResult } from "@/lib/types";
+import { Incident, PestEntry, Recommendation, AIAnalysisResult, RecommendedProductItem } from "@/lib/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import ImageGallery from "@/components/ui/ImageGallery";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { IncidentStatusBadge } from "@/components/ui/StatusBadge";
+import ProductRecommendationSelector from "@/components/inventory/ProductRecommendationSelector";
 import {
   ArrowLeft,
   MapPin,
@@ -86,7 +87,10 @@ function CaseReviewContent() {
   const [diagnosis, setDiagnosis] = useState(() => existingRec?.diagnosis || incident?.aiAnalysis?.diseaseName || "");
   const [treatmentPlan, setTreatmentPlan] = useState(() => existingRec?.treatmentPlan || cleanAiTreatment(incident?.aiAnalysis?.recommendedTreatment || ""));
   const [preventiveAdvice, setPreventiveAdvice] = useState(() => existingRec?.preventiveAdvice || incident?.aiAnalysis?.preventiveMeasures || "");
-  const [purchaseRecommendation, setPurchaseRecommendation] = useState("");
+  const [purchaseRecommendation, setPurchaseRecommendation] = useState(() => existingRec?.purchaseRecommendation || "");
+  const [recommendedProducts, setRecommendedProducts] = useState<RecommendedProductItem[]>(
+    () => existingRec?.recommendedProducts || []
+  );
   const [basedOnAI, setBasedOnAI] = useState(true);
   const [reanalyzing, setReanalyzing] = useState(false);
 
@@ -146,7 +150,11 @@ function CaseReviewContent() {
         setDiagnosis(localRec?.diagnosis || localIncident.aiAnalysis?.diseaseName || "");
         setTreatmentPlan(localRec?.treatmentPlan || cleanAiTreatment(localIncident.aiAnalysis?.recommendedTreatment || ""));
         setPreventiveAdvice(localRec?.preventiveAdvice || localIncident.aiAnalysis?.preventiveMeasures || "");
-        if (localRec) setExistingRec(localRec);
+        if (localRec) {
+          setExistingRec(localRec);
+          if (localRec.purchaseRecommendation) setPurchaseRecommendation(localRec.purchaseRecommendation);
+          if (localRec.recommendedProducts) setRecommendedProducts(localRec.recommendedProducts);
+        }
         if (pestLocal.length > 0) setPestEntries(pestLocal);
         setLoading(false);
       } else {
@@ -161,9 +169,14 @@ function CaseReviewContent() {
 
         const recSnap = await getDoc(doc(db, "recommendations", `rec_${id}`));
         if (recSnap.exists()) {
-          setExistingRec({ id: recSnap.id, ...recSnap.data() } as Recommendation);
+          const recData = { id: recSnap.id, ...recSnap.data() } as Recommendation;
+          setExistingRec(recData);
+          if (recData.purchaseRecommendation) setPurchaseRecommendation(recData.purchaseRecommendation);
+          if (recData.recommendedProducts) setRecommendedProducts(recData.recommendedProducts);
         } else if (localRec) {
           setExistingRec(localRec);
+          if (localRec.purchaseRecommendation) setPurchaseRecommendation(localRec.purchaseRecommendation);
+          if (localRec.recommendedProducts) setRecommendedProducts(localRec.recommendedProducts);
         }
 
         const pestsSnap = await getDocs(collection(db, "pest_database"));
@@ -173,7 +186,11 @@ function CaseReviewContent() {
       } catch (err) {
         console.warn("Firestore case load error, using local data:", err);
         loadedIncident = localIncident || loadedIncident;
-        if (localRec) setExistingRec(localRec);
+        if (localRec) {
+          setExistingRec(localRec);
+          if (localRec.purchaseRecommendation) setPurchaseRecommendation(localRec.purchaseRecommendation);
+          if (localRec.recommendedProducts) setRecommendedProducts(localRec.recommendedProducts);
+        }
       }
 
       if (loadedIncident) setIncident(loadedIncident);
@@ -247,6 +264,7 @@ function CaseReviewContent() {
         treatmentPlan: treatmentPlan.trim(),
         preventiveAdvice: preventiveAdvice.trim(),
         purchaseRecommendation: purchaseRecommendation.trim(),
+        recommendedProducts: recommendedProducts,
         basedOnAI,
         confidence: incident.aiAnalysis?.confidence || "",
         createdAt: new Date().toISOString(),
@@ -445,12 +463,43 @@ function CaseReviewContent() {
                 {existingRec.preventiveAdvice}
               </p>
             )}
-            {existingRec.purchaseRecommendation && (
+            {existingRec.recommendedProducts && existingRec.recommendedProducts.length > 0 ? (
+              <div className="space-y-2 pt-2 border-t border-emerald-200">
+                <p className="text-sm font-semibold text-gray-800 dark:text-gray-200">
+                  Recommended Products &amp; Chemicals to Buy ({existingRec.recommendedProducts.length}):
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  {existingRec.recommendedProducts.map((p, idx) => (
+                    <div
+                      key={p.id || p.productId || idx}
+                      className="p-3 bg-white dark:bg-gray-800 border border-emerald-200 dark:border-gray-700 rounded-lg text-xs space-y-1 shadow-sm"
+                    >
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="font-semibold text-gray-900 dark:text-gray-100">{p.name}</span>
+                        <span className="px-2 py-0.5 rounded text-[10px] font-medium bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300">
+                          {p.category}
+                        </span>
+                      </div>
+                      {p.dosage && (
+                        <p className="text-gray-600 dark:text-gray-300">
+                          <strong>Dosage:</strong> {p.dosage}
+                        </p>
+                      )}
+                      {p.instructions && (
+                        <p className="text-gray-500 dark:text-gray-400">
+                          <strong>Directions:</strong> {p.instructions}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : existingRec.purchaseRecommendation ? (
               <p className="text-sm text-gray-800 whitespace-pre-line">
                 <strong>Recommended to buy:</strong>{"\n"}
                 {existingRec.purchaseRecommendation}
               </p>
-            )}
+            ) : null}
           </div>
         ) : (
           <form onSubmit={handleSubmit} className="card border-2 border-blue-100 space-y-4">
@@ -523,18 +572,17 @@ function CaseReviewContent() {
               />
             </div>
 
-            <div>
-              <label className="block text-xs font-semibold text-gray-700 uppercase tracking-wider mb-1">
-                Recommend What to Buy
-              </label>
-              <textarea
-                rows={3}
-                value={purchaseRecommendation}
-                onChange={(e) => setPurchaseRecommendation(e.target.value)}
-                className="input-field text-sm"
-                placeholder="Products or chemicals to purchase, including brand and dosage if applicable..."
-              />
-            </div>
+            <ProductRecommendationSelector
+              selectedProducts={recommendedProducts}
+              onChange={(items, summary) => {
+                setRecommendedProducts(items);
+                setPurchaseRecommendation(summary);
+              }}
+              diagnosis={diagnosis}
+              cropType={incident.cropType}
+              aiDiseaseName={incident.aiAnalysis?.diseaseName}
+              aiRecommendedTreatment={incident.aiAnalysis?.recommendedTreatment}
+            />
 
             <label className="flex items-center gap-2 text-sm text-gray-700">
               <input

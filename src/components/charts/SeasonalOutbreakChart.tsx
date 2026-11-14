@@ -19,11 +19,15 @@ import {
   Filter,
   RotateCcw,
   Check,
+  Printer,
 } from "lucide-react";
+import { printSeasonalOutbreakReport } from "@/lib/outbreak-print";
 
 interface Props {
   selectedCrop?: CropCategory;
   onCropChange?: (crop: CropCategory) => void;
+  selectedSeason?: "all" | "Wet Season" | "Dry Season";
+  onSeasonChange?: (season: "all" | "Wet Season" | "Dry Season") => void;
   onSelectMonth?: (month: MonthlyOutbreakData) => void;
 }
 
@@ -65,6 +69,8 @@ const SEVERITY_COLORS: Record<string, { fill: string; stroke: string; bg: string
 export default function SeasonalOutbreakChart({
   selectedCrop: controlledCrop,
   onCropChange,
+  selectedSeason: controlledSeason,
+  onSeasonChange,
   onSelectMonth,
 }: Props) {
   const [internalCrop, setInternalCrop] = useState<CropCategory>("All Crops");
@@ -80,7 +86,8 @@ export default function SeasonalOutbreakChart({
   });
 
   // Interactive Filter States
-  const [seasonFilter, setSeasonFilter] = useState<"all" | "Wet Season" | "Dry Season">("all");
+  const [internalSeasonFilter, setInternalSeasonFilter] = useState<"all" | "Wet Season" | "Dry Season">("all");
+  const seasonFilter = controlledSeason !== undefined ? controlledSeason : internalSeasonFilter;
   const [threatFilter, setThreatFilter] = useState<"all" | ThreatSeverity>("all");
 
   const handleCropSelect = (crop: CropCategory) => {
@@ -93,9 +100,9 @@ export default function SeasonalOutbreakChart({
     if (onSelectMonth) onSelectMonth(m);
   };
 
-  const toggleSeasonFilter = (season: "Wet Season" | "Dry Season") => {
-    const nextSeason = seasonFilter === season ? "all" : season;
-    setSeasonFilter(nextSeason);
+  const setSeason = (nextSeason: "all" | "Wet Season" | "Dry Season") => {
+    if (onSeasonChange) onSeasonChange(nextSeason);
+    else setInternalSeasonFilter(nextSeason);
 
     // If active month doesn't match new filter, auto-select first matching month
     if (nextSeason !== "all") {
@@ -106,6 +113,11 @@ export default function SeasonalOutbreakChart({
       });
       if (match) setActiveMonth(match);
     }
+  };
+
+  const toggleSeasonFilter = (season: "Wet Season" | "Dry Season") => {
+    const nextSeason = seasonFilter === season ? "all" : season;
+    setSeason(nextSeason);
   };
 
   const toggleThreatFilter = (level: ThreatSeverity) => {
@@ -124,7 +136,7 @@ export default function SeasonalOutbreakChart({
   };
 
   const resetFilters = () => {
-    setSeasonFilter("all");
+    setSeason("all");
     setThreatFilter("all");
   };
 
@@ -210,7 +222,7 @@ export default function SeasonalOutbreakChart({
 
           <button
             type="button"
-            onClick={() => setSeasonFilter("all")}
+            onClick={() => setSeason("all")}
             className={`px-2.5 py-1.5 rounded-lg font-bold text-xs transition-all ${
               seasonFilter === "all"
                 ? "bg-gray-800 text-white dark:bg-gray-200 dark:text-gray-900 shadow-2xs"
@@ -251,7 +263,7 @@ export default function SeasonalOutbreakChart({
           </button>
         </div>
 
-        {/* Threat Level Filter Badges */}
+        {/* Threat Level Filter Badges & Print Button */}
         <div className="flex items-center gap-1.5 flex-wrap">
           <span className="text-gray-500 dark:text-gray-400 text-[11px] font-bold uppercase tracking-wider mr-1">
             Threat Level:
@@ -288,24 +300,64 @@ export default function SeasonalOutbreakChart({
               Reset
             </button>
           )}
+
+          <div className="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-1 hidden sm:block" />
+
+          {/* Dedicated Visualizer Print Trigger for Active Filter */}
+          <button
+            type="button"
+            onClick={() =>
+              printSeasonalOutbreakReport({
+                season: seasonFilter,
+                crop: activeCrop,
+                threat: threatFilter,
+              })
+            }
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-xs transition-colors shrink-0 ml-auto sm:ml-1"
+            title={`Print seasonal report matching selected filters (${seasonFilter})`}
+          >
+            <Printer className="w-3.5 h-3.5" />
+            <span>
+              Print {seasonFilter === "all" ? "Report" : `${seasonFilter}`}
+            </span>
+          </button>
         </div>
       </div>
 
       {/* Filter Active Notification Banner */}
       {isFilterActive && (
         <div className="flex items-center justify-between text-xs px-3 py-1.5 bg-purple-50 dark:bg-purple-950/40 border border-purple-200 dark:border-purple-800/60 rounded-lg text-purple-900 dark:text-purple-200 font-semibold">
-          <span>
-            Showing <strong className="font-extrabold">{matchingMonthsCount}</strong> of 12 months &bull;{" "}
-            {seasonFilter !== "all" && <span className="capitalize">{seasonFilter} </span>}
-            {threatFilter !== "all" && <span className="capitalize">({threatFilter} Threat)</span>}
-          </span>
-          <button
-            type="button"
-            onClick={resetFilters}
-            className="text-[11px] text-purple-700 dark:text-purple-300 underline font-bold hover:text-purple-900"
-          >
-            Show All 12 Months
-          </button>
+          <div className="flex items-center gap-2">
+            <span>
+              Showing <strong className="font-extrabold">{matchingMonthsCount}</strong> of 12 months &bull;{" "}
+              {seasonFilter !== "all" && <span className="capitalize">{seasonFilter} </span>}
+              {threatFilter !== "all" && <span className="capitalize">({threatFilter} Threat)</span>}
+            </span>
+          </div>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() =>
+                printSeasonalOutbreakReport({
+                  season: seasonFilter,
+                  crop: activeCrop,
+                  threat: threatFilter,
+                })
+              }
+              className="text-[11px] text-purple-700 dark:text-purple-300 font-bold hover:underline flex items-center gap-1"
+            >
+              <Printer className="w-3 h-3" />
+              Print This View
+            </button>
+            <span className="text-gray-300 dark:text-gray-700">&bull;</span>
+            <button
+              type="button"
+              onClick={resetFilters}
+              className="text-[11px] text-purple-700 dark:text-purple-300 underline font-bold hover:text-purple-900"
+            >
+              Show All 12 Months
+            </button>
+          </div>
         </div>
       )}
 
