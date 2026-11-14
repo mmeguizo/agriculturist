@@ -151,51 +151,51 @@ export default function AdminOutbreakCalendarPage() {
 
         {/* Quick Highlights Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <div className="card flex items-center gap-3">
-            <div className="p-3 bg-red-100 text-red-700 rounded-xl">
+          <div className="card flex items-center gap-3 dark:bg-gray-900 dark:border-gray-800">
+            <div className="p-3 bg-red-100 dark:bg-red-950 text-red-700 dark:text-red-300 rounded-xl">
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
                 Peak Risk Window
               </p>
-              <p className="text-lg font-extrabold text-gray-900">July &ndash; September</p>
+              <p className="text-lg font-extrabold text-gray-900 dark:text-white">July &ndash; September</p>
             </div>
           </div>
 
-          <div className="card flex items-center gap-3">
-            <div className="p-3 bg-blue-100 text-blue-700 rounded-xl">
+          <div className="card flex items-center gap-3 dark:bg-gray-900 dark:border-gray-800">
+            <div className="p-3 bg-blue-100 dark:bg-blue-950 text-blue-700 dark:text-blue-300 rounded-xl">
               <Layers className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
                 Target Crops
               </p>
-              <p className="text-lg font-extrabold text-gray-900">4 Major Groups</p>
+              <p className="text-lg font-extrabold text-gray-900 dark:text-white">4 Major Groups</p>
             </div>
           </div>
 
-          <div className="card flex items-center gap-3">
-            <div className="p-3 bg-green-100 text-green-700 rounded-xl">
+          <div className="card flex items-center gap-3 dark:bg-gray-900 dark:border-gray-800">
+            <div className="p-3 bg-green-100 dark:bg-green-950 text-green-700 dark:text-green-300 rounded-xl">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
                 Sugarcane Season
               </p>
-              <p className="text-lg font-extrabold text-gray-900">Milling &amp; Planting</p>
+              <p className="text-lg font-extrabold text-gray-900 dark:text-white">Milling &amp; Planting</p>
             </div>
           </div>
 
-          <div className="card flex items-center gap-3">
-            <div className="p-3 bg-amber-100 text-amber-700 rounded-xl">
+          <div className="card flex items-center gap-3 dark:bg-gray-900 dark:border-gray-800">
+            <div className="p-3 bg-amber-100 dark:bg-amber-950 text-amber-700 dark:text-amber-300 rounded-xl">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 font-semibold uppercase tracking-wider">
+              <p className="text-xs text-gray-500 dark:text-gray-400 font-semibold uppercase tracking-wider">
                 Active Calendar
               </p>
-              <p className="text-lg font-extrabold text-gray-900">12-Month Coverage</p>
+              <p className="text-lg font-extrabold text-gray-900 dark:text-white">12-Month Coverage</p>
             </div>
           </div>
         </div>

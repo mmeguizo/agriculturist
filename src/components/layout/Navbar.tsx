@@ -37,6 +37,13 @@ export default function Navbar() {
   };
 
   const role = userProfile?.role || "farmer";
+  const homeHref = userProfile
+    ? role === "admin"
+      ? "/admin"
+      : role === "agriculturist"
+      ? "/agriculturist"
+      : "/farmer"
+    : "/";
 
   const handleSignOut = async () => {
     try {
@@ -97,16 +104,16 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="bg-white border-b border-gray-200 sticky top-0 z-40">
+    <nav className="bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 sticky top-0 z-40">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           {/* Brand */}
           <div className="flex items-center gap-6">
-            <Link href="/" className="flex items-center gap-2">
+            <Link href={homeHref} className="flex items-center gap-2">
               <div className="bg-green-600 p-1.5 rounded-lg text-white">
                 <Leaf className="w-5 h-5" />
               </div>
-              <span className="font-extrabold text-lg text-gray-900 tracking-tight">AgriCare</span>
+              <span className="font-extrabold text-lg text-gray-900 dark:text-white tracking-tight">AgriCare</span>
             </Link>
 
             {/* Desktop Navigation Links */}
@@ -120,8 +127,8 @@ export default function Navbar() {
                     href={link.href}
                     className={`inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-xs font-semibold transition-colors ${
                       isActive
-                        ? "bg-green-50 text-green-700"
-                        : "text-gray-600 hover:text-gray-900 hover:bg-gray-50"
+                        ? "bg-green-50 dark:bg-green-950/60 text-green-700 dark:text-green-400 font-bold"
+                        : "text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-50 dark:hover:bg-gray-800"
                     }`}
                   >
                     <Icon className="w-4 h-4" />
@@ -138,7 +145,7 @@ export default function Navbar() {
             <button
               type="button"
               onClick={toggleTheme}
-              className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+              className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800 rounded-full transition-colors"
               title="Toggle dark mode"
               aria-label="Toggle dark mode"
             >
@@ -151,7 +158,7 @@ export default function Navbar() {
 
             {/* User Profile Summary */}
             <div className="hidden sm:flex flex-col items-end">
-              <span className="text-xs font-bold text-gray-900">
+              <span className="text-xs font-bold text-gray-900 dark:text-white">
                 {userProfile?.fullName || "Active User"}
               </span>
               {getRoleBadge()}
@@ -160,7 +167,7 @@ export default function Navbar() {
             {/* Sign Out */}
             <button
               onClick={handleSignOut}
-              className="hidden sm:inline-flex items-center gap-1 text-xs text-gray-600 hover:text-red-600 hover:bg-red-50 p-2 rounded-lg transition-colors"
+              className="hidden sm:inline-flex items-center gap-1 text-xs text-gray-600 dark:text-gray-400 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 p-2 rounded-lg transition-colors"
               title="Sign Out"
             >
               <LogOut className="w-4 h-4" />
@@ -171,7 +178,7 @@ export default function Navbar() {
               <button
                 type="button"
                 onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="p-2 rounded-lg text-gray-600 hover:text-gray-900 hover:bg-gray-100"
+                className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800"
               >
                 {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
               </button>
@@ -182,11 +189,11 @@ export default function Navbar() {
 
       {/* Mobile Menu */}
       {mobileMenuOpen && (
-        <div className="md:hidden border-t border-gray-100 bg-white px-4 pt-2 pb-4 space-y-1">
-          <div className="py-2 border-b border-gray-100 mb-2 flex items-center justify-between">
+        <div className="md:hidden border-t border-gray-100 dark:border-gray-800 bg-white dark:bg-gray-900 px-4 pt-2 pb-4 space-y-1">
+          <div className="py-2 border-b border-gray-100 dark:border-gray-800 mb-2 flex items-center justify-between">
             <div>
-              <p className="text-sm font-bold text-gray-900">{userProfile?.fullName}</p>
-              <p className="text-xs text-gray-500">{userProfile?.email}</p>
+              <p className="text-sm font-bold text-gray-900 dark:text-white">{userProfile?.fullName}</p>
+              <p className="text-xs text-gray-500 dark:text-gray-400">{userProfile?.email}</p>
             </div>
             {getRoleBadge()}
           </div>
@@ -201,8 +208,8 @@ export default function Navbar() {
                 onClick={() => setMobileMenuOpen(false)}
                 className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium ${
                   isActive
-                    ? "bg-green-50 text-green-700 font-bold"
-                    : "text-gray-700 hover:bg-gray-50"
+                    ? "bg-green-50 dark:bg-green-950/60 text-green-700 dark:text-green-400 font-bold"
+                    : "text-gray-700 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-800"
                 }`}
               >
                 <Icon className="w-4 h-4" />
@@ -216,7 +223,7 @@ export default function Navbar() {
               setMobileMenuOpen(false);
               handleSignOut();
             }}
-            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-medium text-red-600 hover:bg-red-50 rounded-lg mt-2"
+            className="flex items-center gap-2.5 w-full px-3 py-2 text-sm font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 rounded-lg mt-2"
           >
             <LogOut className="w-4 h-4" />
             Sign Out
