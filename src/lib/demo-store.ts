@@ -43,6 +43,25 @@ export const localStore = {
     setAll: (v: UserProfile[]) => write("agricare_all_users", v),
     upsert: (u: UserProfile) => upsert<UserProfile>("agricare_all_users", u),
     remove: (id: string) => remove<UserProfile>("agricare_all_users", id),
+    findByEmail: (email: string) =>
+      read<UserProfile>("agricare_all_users").find(
+        (u) => u.email.toLowerCase() === email.trim().toLowerCase()
+      ),
+    resetPassword: (email: string, _newPassword?: string) => {
+      const users = read<UserProfile>("agricare_all_users");
+      const user = users.find(
+        (u) => u.email.toLowerCase() === email.trim().toLowerCase()
+      );
+      if (user) {
+        // Record timestamp of password reset
+        localStorage.setItem(
+          `agricare_pwd_reset_${user.id}`,
+          new Date().toISOString()
+        );
+        return true;
+      }
+      return false;
+    },
   },
   incidents: {
     getAll: () => read<Incident>("agricare_incidents"),

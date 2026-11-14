@@ -10,6 +10,7 @@ import DashboardLayout from "@/components/layout/DashboardLayout";
 import { IncidentStatusBadge } from "@/components/ui/StatusBadge";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { useResolvedImageUrls } from "@/lib/use-resolved-images";
+import SeasonalThreatWidget from "@/components/charts/SeasonalThreatWidget";
 import {
   PlusCircle,
   FileText,
@@ -319,6 +320,9 @@ export default function FarmerDashboard() {
             </div>
           </div>
         </div>
+
+        {/* Seasonal Outbreak Alert for Negros Occidental */}
+        <SeasonalThreatWidget role="farmer" />
 
         {/* Incident Management Section */}
         <div className="card space-y-4 shadow-sm border border-gray-200">

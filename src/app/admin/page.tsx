@@ -8,6 +8,7 @@ import { localStore } from "@/lib/demo-store";
 import { Advisory, Incident, UserProfile } from "@/lib/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
+import SeasonalThreatWidget from "@/components/charts/SeasonalThreatWidget";
 import {
   Users,
   UserCheck,
@@ -19,6 +20,7 @@ import {
   ArrowRight,
   BarChart3,
   Printer,
+  Calendar,
 } from "lucide-react";
 
 export default function AdminDashboard() {
@@ -241,6 +243,9 @@ export default function AdminDashboard() {
           })}
         </div>
 
+        {/* Seasonal Outbreak Alert for Negros Occidental */}
+        <SeasonalThreatWidget role="admin" />
+
         <div className="card">
           <div className="flex items-center gap-2 mb-4">
             <BarChart3 className="w-5 h-5 text-purple-600" />
@@ -268,7 +273,20 @@ export default function AdminDashboard() {
           )}
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <Link href="/admin/outbreak-calendar" className="card hover:shadow-md transition-shadow group">
+            <div className="flex items-center justify-between">
+              <div className="p-3 bg-purple-100 text-purple-700 rounded-xl">
+                <Calendar className="w-6 h-6" />
+              </div>
+              <ArrowRight className="w-5 h-5 text-gray-300 group-hover:text-purple-600 transition-colors" />
+            </div>
+            <h3 className="font-bold text-gray-900 mt-3">Outbreak Calendar</h3>
+            <p className="text-xs text-gray-500 mt-1">
+              Seasonal visual charts, crop calendars, and printable reports.
+            </p>
+          </Link>
+
           <Link href="/admin/users" className="card hover:shadow-md transition-shadow group">
             <div className="flex items-center justify-between">
               <div className="p-3 bg-blue-100 text-blue-700 rounded-xl">

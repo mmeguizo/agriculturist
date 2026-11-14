@@ -1,15 +1,21 @@
-ai detect problem of the plants give recomendations
-picture plants like there is a disease or  discoloar ai will provide recomendations 
-identity the problem of the plants, the ai will not identify the plants just only the disease 
-the farmer will provide picture
-important features,  will recommend only the ai
+1.User account: Farmer,Agriculturist,admin.
+-Reset password if the user forgot password
 
-the agriculturis will see the picture and the agriculturist will recommend
-the system  or ai will recommend the agriculturist will approve it
+2. -Must be Visualize Chart Report Chart
+**Outbreak must be Seasonal Visualize chart.
 
-cases or incident ticket from farmers that ai can see
+May -Rice blast, bacterial leaf blight, fungal diseases
+June -Rice stem borers, golden apple snails, planthoppers
+July -Rice blast, sheath blight, bacterial leaf blight
+August -Brown planthoppers, armyworms, leaf folders
+September -Rice blast, bacterial diseases,- fungal infections
+October -Stem borers, planthoppers, fruit and root rots
+November- Rats, rice bugs, fungal diseases
+December -Rice blast, rodents, vegetable pests
 
-basic login username and password only admin will provide the username and password
-or better create an account but admin will approve it
-
-submit / identity / report / recommend
+-monthly outbreak calendar specifically for:
+-Rice
+-Corn
+-Sugarcane
+-Vegetables
+-All major crops in Negros Occidental

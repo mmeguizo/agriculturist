@@ -22,6 +22,7 @@ import {
   Tractor,
   Sun,
   Moon,
+  Calendar,
 } from "lucide-react";
 
 export default function Navbar() {
@@ -50,6 +51,7 @@ export default function Navbar() {
     if (role === "admin") {
       return [
         { href: "/admin", label: "Overview", icon: Home },
+        { href: "/admin/outbreak-calendar", label: "Outbreak Calendar", icon: Calendar },
         { href: "/admin/users", label: "User Approvals", icon: Users },
         { href: "/admin/pests", label: "Pest Database", icon: Database },
         { href: "/admin/advisories", label: "Advisories", icon: AlertTriangle },
@@ -57,12 +59,14 @@ export default function Navbar() {
     } else if (role === "agriculturist") {
       return [
         { href: "/agriculturist", label: "Incident Queue", icon: FileText },
+        { href: "/agriculturist/outbreak-calendar", label: "Outbreak Calendar", icon: Calendar },
         { href: "/farmer/advisories", label: "Advisories", icon: AlertTriangle },
       ];
     } else {
       return [
         { href: "/farmer", label: "Dashboard", icon: Home },
         { href: "/farmer/report", label: "Report Incident", icon: PlusCircle },
+        { href: "/farmer/calendar", label: "Outbreak Calendar", icon: Calendar },
         { href: "/farmer/advisories", label: "Advisories", icon: AlertTriangle },
       ];
     }

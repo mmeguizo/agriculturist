@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { collection, getDocs, doc, setDoc, updateDoc } from "firebase/firestore";
-import { db, firebaseConfig } from "@/lib/firebase";
+import { sendPasswordResetEmail } from "firebase/auth";
+import { auth, db, firebaseConfig } from "@/lib/firebase";
 import { localStore } from "@/lib/demo-store";
 import { UserProfile, UserRole } from "@/lib/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
@@ -19,6 +20,7 @@ import {
   Loader2,
   Eye,
   EyeOff,
+  KeyRound,
 } from "lucide-react";
 import toast from "react-hot-toast";
 import { v4 as uuidv4 } from "uuid";
@@ -72,6 +74,16 @@ export default function AdminUsersPage() {
 
     void loadUsers();
   }, []);
+
+  const handleAdminReset = async (userEmail: string, userName: string) => {
+    try {
+      await sendPasswordResetEmail(auth, userEmail);
+      toast.success(`Reset link sent to ${userEmail}`);
+    } catch {
+      localStore.users.resetPassword(userEmail);
+      toast.success(`Password reset requested for ${userName}`);
+    }
+  };
 
   const updateUserStatus = async (id: string, status: "approved" | "rejected") => {
     setBusyId(id);
@@ -360,6 +372,7 @@ export default function AdminUsersPage() {
                       <span className="text-[10px] font-bold bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full uppercase">
                         {ROLE_LABEL[user.role]}
                       </span>
+
                     </div>
                     <p className="text-xs text-gray-500 flex items-center gap-1 mt-0.5">
                       <Mail className="w-3 h-3" /> {user.email}
@@ -382,6 +395,16 @@ export default function AdminUsersPage() {
                   >
                     {user.status}
                   </span>
+
+                  <button
+                    type="button"
+                    title={`Send password reset to ${user.email}`}
+                    onClick={() => handleAdminReset(user.email, user.fullName)}
+                    className="inline-flex items-center gap-1 text-xs font-semibold bg-gray-50 hover:bg-purple-50 text-gray-700 hover:text-purple-700 border border-gray-200 px-2 py-1.5 rounded-lg transition-colors"
+                  >
+                    <KeyRound className="w-3.5 h-3.5 text-purple-600" />
+                    <span className="hidden sm:inline">Reset Pass</span>
+                  </button>
 
                   {user.status !== "approved" && (
                     <button

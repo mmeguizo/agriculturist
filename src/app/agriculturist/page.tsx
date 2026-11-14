@@ -9,6 +9,7 @@ import { Incident } from "@/lib/types";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import LoadingSpinner from "@/components/ui/LoadingSpinner";
 import { IncidentStatusBadge } from "@/components/ui/StatusBadge";
+import SeasonalThreatWidget from "@/components/charts/SeasonalThreatWidget";
 import { useResolvedImageUrls } from "@/lib/use-resolved-images";
 import {
   FileText,
@@ -220,6 +221,9 @@ export default function AgriculturistQueuePage() {
             Review smallholder farmer incident reports, examine high-resolution crop photos and preliminary AI vision indicators, and submit verified prescriptions.
           </p>
         </div>
+
+        {/* Seasonal Outbreak Alert for Negros Occidental */}
+        <SeasonalThreatWidget role="agriculturist" />
 
         {/* Incident Management Section */}
         <div className="card space-y-4 shadow-sm border border-gray-200">
