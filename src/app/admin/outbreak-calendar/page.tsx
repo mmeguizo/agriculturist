@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import DashboardLayout from "@/components/layout/DashboardLayout";
 import SeasonalOutbreakChart from "@/components/charts/SeasonalOutbreakChart";
 import SeasonalCalendarMatrix from "@/components/charts/SeasonalCalendarMatrix";
@@ -10,7 +10,7 @@ import {
   CropCategory,
   MonthlyOutbreakData,
 } from "@/lib/seasonal-data";
-import { printSeasonalOutbreakReport } from "@/lib/outbreak-print";
+import { printSeasonalOutbreakReport, OutbreakPrintMode } from "@/lib/outbreak-print";
 import {
   Calendar,
   Printer,
@@ -21,16 +21,32 @@ import {
   Info,
   MapPin,
   ShieldCheck,
+  ChevronDown,
+  FileText,
 } from "lucide-react";
 
 export default function AdminOutbreakCalendarPage() {
   const [selectedCrop, setSelectedCrop] = useState<CropCategory>("All Crops");
   const [selectedSeason, setSelectedSeason] = useState<"all" | "Wet Season" | "Dry Season">("all");
+  const [bannerPrintOpen, setBannerPrintOpen] = useState(false);
+  const bannerPrintRef = useRef<HTMLDivElement>(null);
 
-  const handlePrint = () => {
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (bannerPrintRef.current && !bannerPrintRef.current.contains(event.target as Node)) {
+        setBannerPrintOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handlePrint = (mode: OutbreakPrintMode = "full") => {
+    setBannerPrintOpen(false);
     printSeasonalOutbreakReport({
       season: selectedSeason,
       crop: selectedCrop,
+      mode,
     });
   };
 
@@ -52,14 +68,82 @@ export default function AdminOutbreakCalendarPage() {
             </p>
           </div>
 
-          <button
-            type="button"
-            onClick={handlePrint}
-            className="btn-primary bg-white text-purple-900 hover:bg-purple-50 hover:text-purple-950 shadow-md font-bold text-sm shrink-0 flex items-center gap-2 py-2.5 px-4"
-          >
-            <Printer className="w-4 h-4 text-purple-700" />
-            Print Outbreak Report {selectedSeason !== "all" ? `(${selectedSeason})` : "(All Seasons)"}
-          </button>
+          <div className="shrink-0 flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => handlePrint("chart-only")}
+              className="bg-white/15 hover:bg-white/25 text-white border border-white/30 shadow-xs font-bold text-xs sm:text-sm rounded-xl flex items-center gap-1.5 py-2.5 px-3.5 transition-colors"
+              title="Print the visual outbreak graph for current season"
+            >
+              <BarChart3 className="w-4 h-4 text-purple-200" />
+              <span>Print Graph</span>
+            </button>
+
+            <div className="relative" ref={bannerPrintRef}>
+              <button
+                type="button"
+                onClick={() => setBannerPrintOpen(!bannerPrintOpen)}
+                className="btn-primary bg-white text-purple-900 hover:bg-purple-50 hover:text-purple-950 shadow-md font-bold text-xs sm:text-sm flex items-center gap-2 py-2.5 px-4"
+              >
+                <Printer className="w-4 h-4 text-purple-700" />
+                <span>Print Outbreak Report {selectedSeason !== "all" ? `(${selectedSeason})` : ""}</span>
+                <ChevronDown className="w-3.5 h-3.5 text-purple-700 ml-0.5" />
+              </button>
+
+              {bannerPrintOpen && (
+                <div className="absolute right-0 mt-2 w-64 rounded-xl bg-white shadow-xl border border-gray-200 py-1.5 z-50 text-left text-gray-900">
+                  <div className="px-3 py-1.5 border-b border-gray-100 text-[10px] font-bold text-gray-500 uppercase tracking-wider">
+                    Print Surveillance Report
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handlePrint("full")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-start gap-2.5 transition-colors group"
+                  >
+                    <Printer className="w-4 h-4 text-purple-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-gray-900 group-hover:text-purple-700">
+                        Complete Report (Graph + Table)
+                      </div>
+                      <div className="text-[10px] text-gray-500">
+                        Visual outbreak chart and full mitigation table
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePrint("chart-only")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-start gap-2.5 transition-colors group"
+                  >
+                    <BarChart3 className="w-4 h-4 text-indigo-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-gray-900 group-hover:text-indigo-700">
+                        Visual Graph Only
+                      </div>
+                      <div className="text-[10px] text-gray-500">
+                        1-Page landscape chart infographic &amp; KPIs
+                      </div>
+                    </div>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handlePrint("table-only")}
+                    className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 flex items-start gap-2.5 transition-colors group"
+                  >
+                    <FileText className="w-4 h-4 text-emerald-600 mt-0.5 shrink-0" />
+                    <div>
+                      <div className="font-bold text-gray-900 group-hover:text-emerald-700">
+                        Data Table Only
+                      </div>
+                      <div className="text-[10px] text-gray-500">
+                        Original tabular outbreak data report
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Quick Highlights Grid */}

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   MONTHLY_OUTBREAK_SCHEDULE,
   NEGROS_CROPS,
@@ -20,8 +20,11 @@ import {
   RotateCcw,
   Check,
   Printer,
+  BarChart3,
+  ChevronDown,
+  FileText,
 } from "lucide-react";
-import { printSeasonalOutbreakReport } from "@/lib/outbreak-print";
+import { printSeasonalOutbreakReport, OutbreakPrintMode } from "@/lib/outbreak-print";
 
 interface Props {
   selectedCrop?: CropCategory;
@@ -89,6 +92,30 @@ export default function SeasonalOutbreakChart({
   const [internalSeasonFilter, setInternalSeasonFilter] = useState<"all" | "Wet Season" | "Dry Season">("all");
   const seasonFilter = controlledSeason !== undefined ? controlledSeason : internalSeasonFilter;
   const [threatFilter, setThreatFilter] = useState<"all" | ThreatSeverity>("all");
+
+  // Print Menu State & Ref
+  const [printMenuOpen, setPrintMenuOpen] = useState(false);
+  const printMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (printMenuRef.current && !printMenuRef.current.contains(event.target as Node)) {
+        setPrintMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const handlePrintAction = (mode: OutbreakPrintMode = "full") => {
+    setPrintMenuOpen(false);
+    printSeasonalOutbreakReport({
+      season: seasonFilter,
+      crop: activeCrop,
+      threat: threatFilter,
+      mode,
+    });
+  };
 
   const handleCropSelect = (crop: CropCategory) => {
     if (onCropChange) onCropChange(crop);
@@ -303,24 +330,83 @@ export default function SeasonalOutbreakChart({
 
           <div className="h-4 w-px bg-gray-300 dark:bg-gray-700 mx-1 hidden sm:block" />
 
-          {/* Dedicated Visualizer Print Trigger for Active Filter */}
+          {/* Quick 1-Click Print Graph Action */}
           <button
             type="button"
-            onClick={() =>
-              printSeasonalOutbreakReport({
-                season: seasonFilter,
-                crop: activeCrop,
-                threat: threatFilter,
-              })
-            }
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-xs transition-colors shrink-0 ml-auto sm:ml-1"
-            title={`Print seasonal report matching selected filters (${seasonFilter})`}
+            onClick={() => handlePrintAction("chart-only")}
+            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-100 hover:bg-purple-200 dark:bg-purple-950/80 dark:hover:bg-purple-900/80 text-purple-800 dark:text-purple-300 border border-purple-300 dark:border-purple-700/80 shadow-2xs transition-colors shrink-0"
+            title="Print the visual outbreak graph matching your active filters"
           >
-            <Printer className="w-3.5 h-3.5" />
-            <span>
-              Print {seasonFilter === "all" ? "Report" : `${seasonFilter}`}
-            </span>
+            <BarChart3 className="w-3.5 h-3.5 text-purple-700 dark:text-purple-300" />
+            <span>Print Graph</span>
           </button>
+
+          {/* Print Report Dropdown Menu */}
+          <div className="relative inline-block text-left" ref={printMenuRef}>
+            <button
+              type="button"
+              onClick={() => setPrintMenuOpen(!printMenuOpen)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold bg-purple-700 hover:bg-purple-800 text-white shadow-xs transition-colors shrink-0"
+              title="Print options: Complete (Graph + Table), Graph Only, or Data Table Only"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              <span>Print Report</span>
+              <ChevronDown className="w-3 h-3 ml-0.5 opacity-80" />
+            </button>
+
+            {printMenuOpen && (
+              <div className="absolute right-0 mt-1.5 w-64 rounded-xl bg-white dark:bg-gray-900 shadow-xl border border-gray-200 dark:border-gray-800 py-1.5 z-50 text-left">
+                <div className="px-3 py-1.5 border-b border-gray-100 dark:border-gray-800 text-[10px] font-bold text-gray-500 dark:text-gray-400 uppercase tracking-wider">
+                  Print Options ({seasonFilter === "all" ? "12 Months" : seasonFilter})
+                </div>
+                <button
+                  type="button"
+                  onClick={() => handlePrintAction("full")}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 dark:hover:bg-purple-950/50 flex items-start gap-2.5 transition-colors group"
+                >
+                  <Printer className="w-4 h-4 text-purple-600 dark:text-purple-400 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-white group-hover:text-purple-700 dark:group-hover:text-purple-300">
+                      Complete Report (Graph + Table)
+                    </div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                      High-res outbreak chart + full mitigation table
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintAction("chart-only")}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 dark:hover:bg-purple-950/50 flex items-start gap-2.5 transition-colors group"
+                >
+                  <BarChart3 className="w-4 h-4 text-indigo-600 dark:text-indigo-400 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-white group-hover:text-indigo-700 dark:group-hover:text-indigo-300">
+                      Visual Graph Only
+                    </div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                      1-Page landscape chart infographic &amp; KPIs
+                    </div>
+                  </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handlePrintAction("table-only")}
+                  className="w-full text-left px-3 py-2 text-xs hover:bg-purple-50 dark:hover:bg-purple-950/50 flex items-start gap-2.5 transition-colors group"
+                >
+                  <FileText className="w-4 h-4 text-emerald-600 dark:text-emerald-400 mt-0.5 shrink-0" />
+                  <div>
+                    <div className="font-bold text-gray-900 dark:text-white group-hover:text-emerald-700 dark:group-hover:text-emerald-300">
+                      Data Table Only
+                    </div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400">
+                      Original tabular outbreak data without chart
+                    </div>
+                  </div>
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -337,17 +423,20 @@ export default function SeasonalOutbreakChart({
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() =>
-                printSeasonalOutbreakReport({
-                  season: seasonFilter,
-                  crop: activeCrop,
-                  threat: threatFilter,
-                })
-              }
+              onClick={() => handlePrintAction("chart-only")}
+              className="text-[11px] text-purple-700 dark:text-purple-300 font-bold hover:underline flex items-center gap-1"
+            >
+              <BarChart3 className="w-3 h-3" />
+              Print Graph
+            </button>
+            <span className="text-gray-300 dark:text-gray-700">&bull;</span>
+            <button
+              type="button"
+              onClick={() => handlePrintAction("full")}
               className="text-[11px] text-purple-700 dark:text-purple-300 font-bold hover:underline flex items-center gap-1"
             >
               <Printer className="w-3 h-3" />
-              Print This View
+              Print Full Report
             </button>
             <span className="text-gray-300 dark:text-gray-700">&bull;</span>
             <button
